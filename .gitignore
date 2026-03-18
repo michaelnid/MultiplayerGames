@@ -8,3 +8,5 @@ plugins/*/
 coverage/
 *.tgz
 .vite/
+idee.txt
+AGENTS.md
