@@ -42,14 +42,18 @@ npm install --production=false > /dev/null 2>&1 || fail "npm install fehlgeschla
 success "Abhaengigkeiten aktualisiert"
 
 info "Shared Types werden gebaut..."
-npx tsc -p shared/tsconfig.json > /dev/null 2>&1 || fail "Shared Types Build fehlgeschlagen."
+npx tsc --build shared/tsconfig.json --force > /dev/null 2>&1 || fail "Shared Types Build fehlgeschlagen."
 success "Shared Types gebaut"
 
 info "Datenbank-Migrationen werden ausgefuehrt..."
 cd "$INSTALL_DIR/backend"
-npx tsx ../node_modules/.bin/knex migrate:latest --knexfile knexfile.ts > /dev/null 2>&1 || {
-  npx tsx ./node_modules/.bin/knex migrate:latest --knexfile knexfile.ts > /dev/null 2>&1 || fail "Datenbank-Migrationen fehlgeschlagen."
-}
+set +e
+npx tsx ../node_modules/.bin/knex migrate:latest --knexfile knexfile.ts > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+  npx tsx ./node_modules/.bin/knex migrate:latest --knexfile knexfile.ts 2>&1
+  if [ $? -ne 0 ]; then fail "Datenbank-Migrationen fehlgeschlagen."; fi
+fi
+set -e
 success "Migrationen ausgefuehrt"
 
 info "Backend wird gebaut..."

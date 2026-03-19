@@ -150,7 +150,7 @@ success "Abhaengigkeiten installiert"
 
 info "Shared Types werden gebaut..."
 set +e
-npx tsc -p shared/tsconfig.json 2>&1
+npx tsc --build shared/tsconfig.json --force 2>&1
 if [ $? -ne 0 ]; then fail "Shared Types Build fehlgeschlagen."; fi
 set -e
 success "Shared Types gebaut"
