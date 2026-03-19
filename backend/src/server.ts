@@ -50,8 +50,7 @@ async function start() {
   });
 
   await fastify.register(fastifyRateLimit, {
-    max: config.rateLimit.api.max,
-    timeWindow: config.rateLimit.api.windowMs,
+    global: false,
   });
 
   await fastify.register(fastifyMultipart, {
