@@ -116,6 +116,13 @@ function setupSocketEvents() {
     ws.emit(WS_EVENTS.LOBBY_JOIN, { lobbyId: props.lobbyId });
   });
 
+  // Falls der Socket bereits verbunden und authentifiziert ist (z.B. nach
+  // Navigation von einer anderen Seite zur Lobby), feuert 'auth:ok' nicht
+  // erneut. In diesem Fall direkt der Lobby beitreten.
+  if (ws.connected) {
+    ws.emit(WS_EVENTS.LOBBY_JOIN, { lobbyId: props.lobbyId });
+  }
+
   ws.on(WS_EVENTS.LOBBY_PLAYER_JOINED, (data: unknown) => {
     const d = data as { userId: string; username: string };
     if (!players.value.find((p) => p.userId === d.userId)) {
