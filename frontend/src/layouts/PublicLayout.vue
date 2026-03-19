@@ -14,7 +14,6 @@
           <RouterLink to="/" class="nav-link" exact-active-class="active">Home</RouterLink>
           <RouterLink to="/bibliothek" class="nav-link" active-class="active">Bibliothek</RouterLink>
           <RouterLink v-if="auth.isLoggedIn" to="/multiplayer" class="nav-link" active-class="active">Multiplayer</RouterLink>
-          <RouterLink v-if="auth.isLoggedIn" to="/dashboard" class="nav-link" active-class="active">Dashboard</RouterLink>
         </nav>
 
         <div class="topbar-actions">

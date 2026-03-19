@@ -33,8 +33,7 @@ export const router = createRouter({
       children: [
         {
           path: 'dashboard',
-          name: 'dashboard',
-          component: () => import('../views/DashboardView.vue'),
+          redirect: { name: 'profil' },
         },
         {
           path: 'multiplayer',
