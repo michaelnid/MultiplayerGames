@@ -150,7 +150,7 @@ success "Shared Types gebaut"
 # Migrationen
 info "Datenbank-Migrationen werden ausgefuehrt..."
 cd "$INSTALL_DIR/backend"
-npx knex migrate:latest --knexfile knexfile.ts 2>&1 | tail -1
+npx tsx ./node_modules/.bin/knex migrate:latest --knexfile knexfile.ts 2>&1 | tail -3
 success "Migrationen ausgefuehrt"
 
 # Frontend bauen
@@ -167,40 +167,7 @@ echo "----------------------------"
 ADMIN_PASSWORD=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 12)
 
 cd "$INSTALL_DIR/backend"
-node -e "
-import argon2 from 'argon2';
-import knex from 'knex';
-import 'dotenv/config';
-
-const db = knex({
-  client: 'pg',
-  connection: {
-    host: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT),
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-  },
-});
-
-const hash = await argon2.hash('$ADMIN_PASSWORD', {
-  type: argon2.argon2id,
-  memoryCost: 65536,
-  timeCost: 3,
-  parallelism: 4,
-});
-
-const existing = await db('users').where('username', 'admin').first();
-if (!existing) {
-  await db('users').insert({
-    username: 'admin',
-    password_hash: hash,
-    role: 'admin',
-  });
-}
-
-await db.destroy();
-" 2>/dev/null
+npx tsx src/db/create-admin.ts "$ADMIN_PASSWORD" 2>/dev/null
 
 success "Admin-Benutzer erstellt"
 

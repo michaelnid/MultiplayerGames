@@ -47,7 +47,7 @@ success "Shared Types gebaut"
 
 info "Datenbank-Migrationen werden ausgefuehrt..."
 cd "$INSTALL_DIR/backend"
-npx knex migrate:latest --knexfile knexfile.ts 2>&1 | tail -1
+npx tsx ./node_modules/.bin/knex migrate:latest --knexfile knexfile.ts 2>&1 | tail -3
 success "Migrationen ausgefuehrt"
 
 info "Backend wird gebaut..."
