@@ -117,12 +117,18 @@ watch(() => lobby.value?.status, (newStatus) => {
 
 function setupSocketEvents() {
   ws.connect();
-  ws.emit(WS_EVENTS.LOBBY_JOIN, { lobbyId: props.lobbyId });
+
+  ws.on('auth:ok', () => {
+    ws.emit(WS_EVENTS.LOBBY_JOIN, { lobbyId: props.lobbyId });
+  });
 
   ws.on(WS_EVENTS.LOBBY_PLAYER_JOINED, (data: unknown) => {
     const d = data as { userId: string; username: string };
     if (!players.value.find((p) => p.userId === d.userId)) {
       players.value.push(d);
+    }
+    if (d.userId === auth.user?.id) {
+      loadPluginFrontend();
     }
   });
 
@@ -149,15 +155,13 @@ async function leaveLobby() {
 }
 
 onMounted(async () => {
-  setupSocketEvents();
   await loadLobby();
-  if (lobby.value?.status === 'laeuft' || lobby.value?.status === 'beendet') {
-    await loadPluginFrontend();
-  }
+  setupSocketEvents();
 });
 
 onUnmounted(() => {
   ws.emit(WS_EVENTS.LOBBY_LEAVE);
+  ws.off('auth:ok');
   ws.off(WS_EVENTS.LOBBY_PLAYER_JOINED);
   ws.off(WS_EVENTS.LOBBY_PLAYER_LEFT);
   ws.off(WS_EVENTS.LOBBY_STATUS_CHANGED);

@@ -23,6 +23,7 @@ export function setupWebSocket(io: Server, db: Knex) {
       data.userId = user.id;
       data.username = user.username;
       socket.join(`user:${user.id}`);
+      socket.emit('auth:ok');
     });
 
     socket.on(WS_EVENTS.LOBBY_JOIN, async (payload: { lobbyId: string }) => {
