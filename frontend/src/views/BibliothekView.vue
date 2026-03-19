@@ -45,57 +45,52 @@
 
     <div v-if="selectedPlugin" class="detail-overlay" @click.self="closeDetails">
       <div class="detail-card card">
-        <div class="detail-main">
-          <div class="detail-media">
-            <div class="detail-cover-wrapper">
-              <img
-                v-if="selectedPlugin.manifest?.frontend?.bibliothek?.coverImage"
-                :src="`/plugins/${selectedPlugin.slug}/${selectedPlugin.manifest.frontend.bibliothek.coverImage}`"
-                :alt="selectedPlugin.name"
-                class="detail-cover-img"
-              />
-              <div v-else class="detail-icon-large" :style="{ '--accent': selectedAccent }">
-                <img
-                  v-if="selectedPlugin.manifest?.icon"
-                  :src="`/plugins/${selectedPlugin.slug}/${selectedPlugin.manifest.icon}`"
-                  :alt="selectedPlugin.name"
-                  class="detail-icon-img"
-                />
-                <span v-else class="detail-icon-letter">{{ selectedPlugin.name.charAt(0) }}</span>
-              </div>
-            </div>
-
-            <ul class="detail-meta">
-              <li><strong>Spieler:</strong> {{ selectedPlugin.manifest?.minPlayers }}–{{ selectedPlugin.manifest?.maxPlayers }}</li>
-              <li><strong>Version:</strong> v{{ selectedPlugin.version }}</li>
-              <li v-if="selectedPlugin.manifest?.author"><strong>Autor:</strong> {{ selectedPlugin.manifest.author }}</li>
-            </ul>
-          </div>
-
-          <div class="detail-body">
-            <h2 class="detail-title">{{ selectedPlugin.name }}</h2>
-            <p class="detail-sub">{{ shortDescription(selectedPlugin) }}</p>
-
-            <h3>Spielerklaerung</h3>
-            <p class="detail-text">{{ fullDescription(selectedPlugin) }}</p>
+        <div class="detail-cover-area">
+          <img
+            v-if="selectedPlugin.manifest?.frontend?.bibliothek?.coverImage"
+            :src="`/plugins/${selectedPlugin.slug}/${selectedPlugin.manifest.frontend.bibliothek.coverImage}`"
+            :alt="selectedPlugin.name"
+            class="detail-cover-img"
+          />
+          <div v-else class="detail-cover-fallback" :style="{ '--accent': selectedAccent }">
+            <img
+              v-if="selectedPlugin.manifest?.icon"
+              :src="`/plugins/${selectedPlugin.slug}/${selectedPlugin.manifest.icon}`"
+              :alt="selectedPlugin.name"
+              class="detail-cover-fallback-icon"
+            />
+            <span v-else class="detail-cover-fallback-letter">{{ selectedPlugin.name.charAt(0) }}</span>
           </div>
         </div>
 
-        <div class="detail-actions">
-          <RouterLink
-            v-if="auth.isLoggedIn"
-            to="/multiplayer"
-            class="play-btn"
-            :style="{ backgroundColor: selectedAccent }"
-            @click="closeDetails"
-          >
-            Lobby erstellen
-          </RouterLink>
-          <RouterLink v-else to="/login" class="play-btn" @click="closeDetails">
-            Anmelden und spielen
-          </RouterLink>
+        <div class="detail-content">
+          <h2 class="detail-title">{{ selectedPlugin.name }}</h2>
 
-          <button type="button" class="btn-secondary close-btn" @click="closeDetails">Schliessen</button>
+          <ul class="detail-meta">
+            <li><strong>Spieler:</strong> {{ selectedPlugin.manifest?.minPlayers }}–{{ selectedPlugin.manifest?.maxPlayers }}</li>
+            <li><strong>Version:</strong> v{{ selectedPlugin.version }}</li>
+            <li v-if="selectedPlugin.manifest?.author"><strong>Autor:</strong> {{ selectedPlugin.manifest.author }}</li>
+          </ul>
+
+          <h3 class="detail-section-title">Spielerklaerung</h3>
+          <p class="detail-text">{{ fullDescription(selectedPlugin) }}</p>
+
+          <div class="detail-actions">
+            <RouterLink
+              v-if="auth.isLoggedIn"
+              to="/multiplayer"
+              class="play-btn"
+              :style="{ backgroundColor: selectedAccent }"
+              @click="closeDetails"
+            >
+              Lobby erstellen
+            </RouterLink>
+            <RouterLink v-else to="/login" class="play-btn" @click="closeDetails">
+              Anmelden und spielen
+            </RouterLink>
+
+            <button type="button" class="btn-secondary close-btn" @click="closeDetails">Schliessen</button>
+          </div>
         </div>
       </div>
     </div>
@@ -289,71 +284,80 @@ onMounted(async () => {
 
 .detail-card {
   width: 100%;
-  max-width: 760px;
+  max-width: 680px;
   max-height: 90vh;
   overflow: auto;
+  padding: 0;
 }
 
-.detail-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
+.detail-cover-area {
+  width: 100%;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  overflow: hidden;
+  line-height: 0;
 }
 
-.detail-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr);
-  gap: 1.5rem;
+.detail-cover-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  max-height: 280px;
 }
 
-.detail-icon,
-.detail-icon-large {
-  width: 62px;
-  height: 62px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, var(--accent, var(--color-primary)), rgba(15, 17, 23, 0.4));
+.detail-cover-fallback {
+  width: 100%;
+  height: 180px;
+  background: linear-gradient(135deg, var(--accent, var(--color-primary)), rgba(15, 17, 23, 0.6));
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 }
 
-.detail-icon-img {
-  width: 36px;
-  height: 36px;
+.detail-cover-fallback-icon {
+  width: 64px;
+  height: 64px;
   object-fit: contain;
 }
 
-.detail-icon-letter {
+.detail-cover-fallback-letter {
   color: #fff;
-  font-size: 1.5rem;
+  font-size: 3rem;
   font-weight: 700;
 }
 
-.detail-sub {
-  color: var(--color-text-muted);
+.detail-content {
+  padding: 1.5rem;
 }
 
 .detail-title {
-  margin-bottom: 0.4rem;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
 }
 
-.detail-body h3 {
+.detail-section-title {
+  margin-top: 1rem;
   margin-bottom: 0.4rem;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
 }
 
 .detail-text {
   margin-bottom: 1rem;
   color: var(--color-text);
+  line-height: 1.6;
+  white-space: pre-line;
 }
 
 .detail-meta {
   list-style: none;
   padding: 0;
-  margin: 0.5rem 0 0;
+  margin: 0 0 0.5rem;
   color: var(--color-text-muted);
   font-size: 0.85rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.2rem;
 }
 
 .detail-meta strong {
@@ -363,7 +367,7 @@ onMounted(async () => {
 .detail-actions {
   display: flex;
   gap: 0.6rem;
-  margin-top: 1.2rem;
+  margin-top: 1rem;
 }
 
 .play-btn {
@@ -389,10 +393,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
-  .detail-main {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .detail-actions {
     flex-direction: column;
   }
