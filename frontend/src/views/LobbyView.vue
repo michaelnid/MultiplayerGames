@@ -98,7 +98,7 @@ async function loadPluginFrontend() {
   if (!lobby.value || pluginComponent.value) return;
 
   try {
-    (window as unknown as Record<string, unknown>).socket = ws.socket.value;
+    (window as unknown as Record<string, unknown>).socket = ws.socket;
     const pluginUrl = `/plugins/${lobby.value.pluginSlug}/frontend/index.js?t=${Date.now()}`;
     const mod = await import(/* @vite-ignore */ pluginUrl);
     if (mod.default) {
