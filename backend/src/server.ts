@@ -83,6 +83,10 @@ async function start() {
     return { status: 'ok', version: config.coreVersion };
   });
 
+  fastify.get('/favicon.ico', async (_request, reply) => {
+    return reply.sendFile('favicon.svg', frontendDist);
+  });
+
   fastify.setNotFoundHandler(async (request, reply) => {
     if (request.url.startsWith('/api/')) {
       return reply.status(404).send({ success: false, error: 'Route nicht gefunden' });
