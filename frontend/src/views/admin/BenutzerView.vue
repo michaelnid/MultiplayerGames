@@ -39,6 +39,10 @@
       <form @submit.prevent="saveEdit">
         <div class="form-row">
           <div class="form-group">
+            <label>Benutzername</label>
+            <input v-model="editData.username" type="text" minlength="3" maxlength="32" pattern="^[a-zA-Z0-9_-]+$" required />
+          </div>
+          <div class="form-group">
             <label>Rolle</label>
             <select v-model="editData.role">
               <option value="spieler">Spieler</option>
@@ -106,7 +110,7 @@ const createError = ref('');
 const newUser = ref({ username: '', password: '', role: 'spieler' as UserRole });
 
 const editUser = ref<User | null>(null);
-const editData = ref({ role: '' as UserRole, password: '' });
+const editData = ref({ username: '', role: '' as UserRole, password: '' });
 const editError = ref('');
 const editSuccess = ref('');
 
@@ -129,7 +133,7 @@ async function createUser() {
 
 function openEdit(user: User) {
   editUser.value = user;
-  editData.value = { role: user.role as UserRole, password: '' };
+  editData.value = { username: user.username, role: user.role as UserRole, password: '' };
   editError.value = '';
   editSuccess.value = '';
   showCreate.value = false;
@@ -141,6 +145,14 @@ async function saveEdit() {
   editSuccess.value = '';
 
   const body: Record<string, string> = {};
+  const trimmedUsername = editData.value.username.trim();
+  if (trimmedUsername !== editUser.value.username) {
+    if (trimmedUsername.length < 3) {
+      editError.value = 'Benutzername muss mindestens 3 Zeichen lang sein';
+      return;
+    }
+    body.username = trimmedUsername;
+  }
   if (editData.value.role !== editUser.value.role) {
     body.role = editData.value.role;
   }

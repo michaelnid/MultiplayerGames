@@ -91,7 +91,7 @@ export async function userRoutes(fastify: FastifyInstance) {
 
   fastify.put<{
     Params: { id: string };
-    Body: { role?: UserRole; password?: string; disable2fa?: boolean };
+    Body: { username?: string; role?: UserRole; password?: string; disable2fa?: boolean };
   }>('/:id', {
     preHandler: requireAdmin,
     schema: {
@@ -102,6 +102,12 @@ export async function userRoutes(fastify: FastifyInstance) {
       body: {
         type: 'object',
         properties: {
+          username: {
+            type: 'string',
+            minLength: USERNAME_MIN_LENGTH,
+            maxLength: USERNAME_MAX_LENGTH,
+            pattern: '^[a-zA-Z0-9_-]+$',
+          },
           role: { type: 'string', enum: [...USER_ROLES] },
           password: { type: 'string', minLength: PASSWORD_MIN_LENGTH, maxLength: PASSWORD_MAX_LENGTH },
           disable2fa: { type: 'boolean' },
@@ -110,7 +116,7 @@ export async function userRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     const { id } = request.params;
-    const { role, password, disable2fa } = request.body;
+    const { username, role, password, disable2fa } = request.body;
 
     const user = await db('users').where('id', id).first();
     if (!user) {
@@ -118,6 +124,21 @@ export async function userRoutes(fastify: FastifyInstance) {
     }
 
     const updates: Record<string, unknown> = { updated_at: db.fn.now() };
+
+    if (username) {
+      const normalizedUsername = username.toLowerCase().trim();
+      if (normalizedUsername !== user.username) {
+        const existing = await db('users').where('username', normalizedUsername).whereNot('id', id).first();
+        if (existing) {
+          return reply.status(409).send({ success: false, error: 'Benutzername bereits vergeben' });
+        }
+        updates.username = normalizedUsername;
+        await logAudit(db, request.session.userId!, 'username_changed', {
+          targetUser: user.username,
+          newUsername: normalizedUsername,
+        });
+      }
+    }
 
     if (role) {
       updates.role = role;
@@ -145,6 +166,55 @@ export async function userRoutes(fastify: FastifyInstance) {
 
     await db('users').where('id', id).update(updates);
     return { success: true };
+  });
+
+  fastify.put<{
+    Body: { username: string };
+  }>('/me/username', {
+    preHandler: requireAuth,
+    schema: {
+      body: {
+        type: 'object',
+        required: ['username'],
+        properties: {
+          username: {
+            type: 'string',
+            minLength: USERNAME_MIN_LENGTH,
+            maxLength: USERNAME_MAX_LENGTH,
+            pattern: '^[a-zA-Z0-9_-]+$',
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const userId = request.session.userId!;
+    const normalizedUsername = request.body.username.toLowerCase().trim();
+
+    const user = await db('users').where('id', userId).first();
+    if (!user) {
+      return reply.status(404).send({ success: false, error: 'Benutzer nicht gefunden' });
+    }
+
+    if (normalizedUsername === user.username) {
+      return { success: true, data: { username: user.username } };
+    }
+
+    const existing = await db('users').where('username', normalizedUsername).whereNot('id', userId).first();
+    if (existing) {
+      return reply.status(409).send({ success: false, error: 'Benutzername bereits vergeben' });
+    }
+
+    await db('users').where('id', userId).update({
+      username: normalizedUsername,
+      updated_at: db.fn.now(),
+    });
+
+    await logAudit(db, userId, 'username_changed_self', {
+      oldUsername: user.username,
+      newUsername: normalizedUsername,
+    });
+
+    return { success: true, data: { username: normalizedUsername } };
   });
 
   fastify.delete<{

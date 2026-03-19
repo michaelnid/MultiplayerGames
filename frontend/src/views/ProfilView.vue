@@ -48,8 +48,27 @@
         <h2>Kontoinformationen</h2>
         <div class="info-row">
           <span class="info-label">Benutzername</span>
-          <span>{{ auth.user?.username }}</span>
+          <div v-if="editingUsername" class="username-edit">
+            <input
+              v-model="newUsername"
+              type="text"
+              minlength="3"
+              maxlength="32"
+              pattern="^[a-zA-Z0-9_-]+$"
+              class="username-input"
+              @keyup.enter="saveUsername"
+              @keyup.escape="editingUsername = false"
+            />
+            <button class="btn-primary btn-sm" @click="saveUsername">Speichern</button>
+            <button class="btn-secondary btn-sm" @click="editingUsername = false">Abbrechen</button>
+          </div>
+          <div v-else class="username-display">
+            <span>{{ auth.user?.username }}</span>
+            <button class="btn-edit-inline" @click="startEditUsername">Aendern</button>
+          </div>
         </div>
+        <p v-if="usernameError" class="error-msg">{{ usernameError }}</p>
+        <p v-if="usernameSuccess" class="success-msg">{{ usernameSuccess }}</p>
         <div class="info-row">
           <span class="info-label">Rolle</span>
           <span class="role-badge">{{ roleName }}</span>
@@ -87,6 +106,40 @@ const currentPassword = ref('');
 const newPassword = ref('');
 const pwError = ref('');
 const pwSuccess = ref(false);
+
+const editingUsername = ref(false);
+const newUsername = ref('');
+const usernameError = ref('');
+const usernameSuccess = ref('');
+
+function startEditUsername() {
+  newUsername.value = auth.user?.username ?? '';
+  usernameError.value = '';
+  usernameSuccess.value = '';
+  editingUsername.value = true;
+}
+
+async function saveUsername() {
+  usernameError.value = '';
+  usernameSuccess.value = '';
+  const trimmed = newUsername.value.trim();
+  if (trimmed.length < 3) {
+    usernameError.value = 'Benutzername muss mindestens 3 Zeichen lang sein';
+    return;
+  }
+  if (trimmed === auth.user?.username) {
+    editingUsername.value = false;
+    return;
+  }
+  try {
+    await api.put('/users/me/username', { username: trimmed });
+    usernameSuccess.value = 'Benutzername geaendert';
+    editingUsername.value = false;
+    await auth.checkSession();
+  } catch (e) {
+    usernameError.value = e instanceof Error ? e.message : 'Fehler beim Aendern';
+  }
+}
 
 const myStats = ref({ totalWins: 0, totalGames: 0, totalScore: 0 });
 const activeLobbies = ref(0);
@@ -176,6 +229,42 @@ h2 { font-size: 1.1rem; margin-bottom: 1rem; }
 }
 
 .info-label { color: var(--color-text-muted); }
+
+.username-display {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.username-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.username-input {
+  width: 180px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.btn-edit-inline {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-edit-inline:hover {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
 
 .role-badge {
   background-color: var(--color-primary);
