@@ -78,14 +78,25 @@ export async function lobbyRoutes(fastify: FastifyInstance) {
     const manifest = typeof plugin.manifest === 'string' ? JSON.parse(plugin.manifest) : plugin.manifest;
     const code = await generateLobbyCode(db);
 
+    // Plugin-Settings lesen (ueberschreiben Manifest-Werte)
+    const minSetting = await db('plugin_settings')
+      .where({ plugin_id: plugin.id, key: 'settings:minPlayers' })
+      .first();
+    const maxSetting = await db('plugin_settings')
+      .where({ plugin_id: plugin.id, key: 'settings:maxPlayers' })
+      .first();
+
+    const effectiveMin = minSetting?.value != null ? Number(JSON.parse(minSetting.value)) : (manifest.minPlayers || 2);
+    const effectiveMax = maxSetting?.value != null ? Number(JSON.parse(maxSetting.value)) : (manifest.maxPlayers || 8);
+
     const [lobby] = await db('lobbies')
       .insert({
         plugin_id: plugin.id,
         created_by: userId,
         code,
         status: 'wartend',
-        max_players: maxPlayers || manifest.maxPlayers || 8,
-        min_players: manifest.minPlayers || 2,
+        max_players: maxPlayers || effectiveMax,
+        min_players: effectiveMin,
       })
       .returning('*');
 
