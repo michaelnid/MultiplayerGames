@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 INSTALL_DIR="/opt/mike-games"
 SERVICE_NAME="mike-games"
@@ -15,7 +15,16 @@ NC='\033[0m'
 info() { echo -e "${CYAN}[INFO]${NC} $1"; }
 success() { echo -e "${GREEN}[OK]${NC} $1"; }
 warn() { echo -e "${YELLOW}[WARNUNG]${NC} $1"; }
-error() { echo -e "${RED}[FEHLER]${NC} $1"; exit 1; }
+fail() { echo -e "${RED}[FEHLER]${NC} $1"; exit 1; }
+
+ask() {
+  local prompt="$1"
+  local var_name="$2"
+  local input=""
+  echo -en "${CYAN}>>>${NC} ${prompt} " > /dev/tty
+  read -r input < /dev/tty
+  eval "$var_name=\"\$input\""
+}
 
 echo ""
 echo "========================================"
@@ -25,15 +34,16 @@ echo "========================================"
 echo ""
 
 if [ "$EUID" -ne 0 ]; then
-  error "Dieses Script muss als root ausgefuehrt werden (sudo)."
+  fail "Dieses Script muss als root ausgefuehrt werden (sudo)."
 fi
 
 if [ ! -d "$INSTALL_DIR" ]; then
-  error "MIKE ist nicht unter $INSTALL_DIR installiert."
+  fail "MIKE ist nicht unter $INSTALL_DIR installiert."
 fi
 
 echo -e "${RED}WARNUNG: Alle Daten werden unwiderruflich geloescht!${NC}"
-read -p "Wirklich deinstallieren? (ja/nein): " CONFIRM
+CONFIRM=""
+ask "Wirklich deinstallieren? (ja/nein)" CONFIRM
 
 if [[ "$CONFIRM" != "ja" ]]; then
   echo "Deinstallation abgebrochen."
@@ -47,8 +57,8 @@ rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
 systemctl daemon-reload
 success "Service entfernt"
 
-# Datenbank
-read -p "Datenbank und Benutzer ebenfalls loeschen? (j/n): " DEL_DB
+DEL_DB=""
+ask "Datenbank und Benutzer ebenfalls loeschen? (j/n)" DEL_DB
 if [[ "$DEL_DB" == "j" || "$DEL_DB" == "J" ]]; then
   info "Datenbank wird entfernt..."
   sudo -u postgres psql -c "DROP DATABASE IF EXISTS $DB_NAME;" 2>/dev/null || true
@@ -56,7 +66,6 @@ if [[ "$DEL_DB" == "j" || "$DEL_DB" == "J" ]]; then
   success "Datenbank entfernt"
 fi
 
-# Nginx
 if [ -f "/etc/nginx/sites-available/$SERVICE_NAME" ]; then
   info "Nginx-Konfiguration wird entfernt..."
   rm -f "/etc/nginx/sites-enabled/$SERVICE_NAME"
@@ -65,17 +74,18 @@ if [ -f "/etc/nginx/sites-available/$SERVICE_NAME" ]; then
   success "Nginx-Konfiguration entfernt"
 fi
 
-# Certbot
-read -p "SSL-Zertifikate entfernen? (j/n): " DEL_CERT
+DEL_CERT=""
+ask "SSL-Zertifikate entfernen? (j/n)" DEL_CERT
 if [[ "$DEL_CERT" == "j" || "$DEL_CERT" == "J" ]]; then
   DOMAIN=$(grep "^DOMAIN=" "$INSTALL_DIR/.env" 2>/dev/null | cut -d'=' -f2)
   if [ -n "$DOMAIN" ]; then
     certbot delete --cert-name "$DOMAIN" --non-interactive 2>/dev/null || true
     success "SSL-Zertifikate entfernt"
+  else
+    info "Keine Domain konfiguriert, uebersprungen."
   fi
 fi
 
-# Dateien
 info "Dateien werden entfernt..."
 rm -rf "$INSTALL_DIR"
 success "Dateien entfernt"

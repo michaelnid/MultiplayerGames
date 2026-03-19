@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 INSTALL_DIR="/opt/mike-games"
 SERVICE_NAME="mike-games"
@@ -11,7 +11,7 @@ NC='\033[0m'
 
 info() { echo -e "${CYAN}[INFO]${NC} $1"; }
 success() { echo -e "${GREEN}[OK]${NC} $1"; }
-error() { echo -e "${RED}[FEHLER]${NC} $1"; exit 1; }
+fail() { echo -e "${RED}[FEHLER]${NC} $1"; exit 1; }
 
 echo ""
 echo "========================================"
@@ -21,11 +21,11 @@ echo "========================================"
 echo ""
 
 if [ "$EUID" -ne 0 ]; then
-  error "Dieses Script muss als root ausgefuehrt werden (sudo)."
+  fail "Dieses Script muss als root ausgefuehrt werden (sudo)."
 fi
 
 if [ ! -d "$INSTALL_DIR" ]; then
-  error "MIKE ist nicht unter $INSTALL_DIR installiert."
+  fail "MIKE ist nicht unter $INSTALL_DIR installiert."
 fi
 
 cd "$INSTALL_DIR"
@@ -34,32 +34,36 @@ info "Service wird gestoppt..."
 systemctl stop "$SERVICE_NAME" 2>/dev/null || true
 
 info "Updates werden heruntergeladen..."
-git pull origin main 2>&1 | tail -1
+git pull origin main > /dev/null 2>&1 || fail "Git pull fehlgeschlagen."
 success "Repository aktualisiert"
 
 info "Abhaengigkeiten werden aktualisiert..."
-npm install --production=false 2>&1 | tail -1
+npm install --production=false > /dev/null 2>&1 || fail "npm install fehlgeschlagen."
 success "Abhaengigkeiten aktualisiert"
 
 info "Shared Types werden gebaut..."
-npx tsc -p shared/tsconfig.json 2>/dev/null
+npx tsc -p shared/tsconfig.json > /dev/null 2>&1 || fail "Shared Types Build fehlgeschlagen."
 success "Shared Types gebaut"
 
 info "Datenbank-Migrationen werden ausgefuehrt..."
 cd "$INSTALL_DIR/backend"
-npx tsx ./node_modules/.bin/knex migrate:latest --knexfile knexfile.ts 2>&1 | tail -3
+npx tsx ../node_modules/.bin/knex migrate:latest --knexfile knexfile.ts > /dev/null 2>&1 || {
+  npx tsx ./node_modules/.bin/knex migrate:latest --knexfile knexfile.ts > /dev/null 2>&1 || fail "Datenbank-Migrationen fehlgeschlagen."
+}
 success "Migrationen ausgefuehrt"
 
 info "Backend wird gebaut..."
-npx tsc 2>/dev/null
+cd "$INSTALL_DIR/backend"
+npx tsc > /dev/null 2>&1 || fail "Backend Build fehlgeschlagen."
 success "Backend gebaut"
 
 info "Frontend wird gebaut..."
 cd "$INSTALL_DIR/frontend"
-npx vite build 2>&1 | tail -1
+npx vite build > /dev/null 2>&1 || fail "Frontend Build fehlgeschlagen."
 success "Frontend gebaut"
 
 info "Service wird gestartet..."
+cd "$INSTALL_DIR"
 systemctl start "$SERVICE_NAME"
 success "Service gestartet"
 

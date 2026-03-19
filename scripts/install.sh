@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 INSTALL_DIR="/opt/mike-games"
 SERVICE_NAME="mike-games"
@@ -16,7 +16,16 @@ NC='\033[0m'
 info() { echo -e "${CYAN}[INFO]${NC} $1"; }
 success() { echo -e "${GREEN}[OK]${NC} $1"; }
 warn() { echo -e "${YELLOW}[WARNUNG]${NC} $1"; }
-error() { echo -e "${RED}[FEHLER]${NC} $1"; exit 1; }
+fail() { echo -e "${RED}[FEHLER]${NC} $1"; exit 1; }
+
+ask() {
+  local prompt="$1"
+  local var_name="$2"
+  local input=""
+  echo -en "${CYAN}>>>${NC} ${prompt} " > /dev/tty
+  read -r input < /dev/tty
+  eval "$var_name=\"\$input\""
+}
 
 echo ""
 echo "========================================"
@@ -25,32 +34,27 @@ echo "  Installation"
 echo "========================================"
 echo ""
 
-# Root-Pruefung
 if [ "$EUID" -ne 0 ]; then
-  error "Dieses Script muss als root ausgefuehrt werden (sudo)."
+  fail "Dieses Script muss als root ausgefuehrt werden (sudo)."
 fi
 
-# Debian-Pruefung
 if ! grep -q "Debian" /etc/os-release 2>/dev/null; then
   warn "Dieses Script ist fuer Debian 12 optimiert. Andere Systeme werden nicht offiziell unterstuetzt."
 fi
 
-# Bereits installiert?
 if [ -d "$INSTALL_DIR" ]; then
-  error "MIKE ist bereits unter $INSTALL_DIR installiert. Bitte zuerst deinstallieren."
+  fail "MIKE ist bereits unter $INSTALL_DIR installiert. Bitte zuerst deinstallieren."
 fi
 
 # ================================
-echo ""
-echo "[1/4] Systemabhaengigkeiten"
+echo "[1/6] Systemabhaengigkeiten"
 echo "----------------------------"
 
 info "System wird aktualisiert..."
-apt-get update -qq
+apt-get update -qq > /dev/null 2>&1
 apt-get install -y -qq curl git nginx certbot python3-certbot-nginx build-essential > /dev/null 2>&1
 success "Basissystem aktualisiert"
 
-# Node.js 20 LTS
 if ! command -v node &> /dev/null || [[ $(node -v | cut -d'.' -f1 | tr -d 'v') -lt 20 ]]; then
   info "Node.js 20 LTS wird installiert..."
   curl -fsSL https://deb.nodesource.com/setup_20.x | bash - > /dev/null 2>&1
@@ -60,11 +64,10 @@ else
   success "Node.js $(node -v) bereits vorhanden"
 fi
 
-# PostgreSQL
 if ! command -v psql &> /dev/null; then
   info "PostgreSQL wird installiert..."
   apt-get install -y -qq postgresql postgresql-contrib > /dev/null 2>&1
-  systemctl enable postgresql
+  systemctl enable postgresql > /dev/null 2>&1
   systemctl start postgresql
   success "PostgreSQL installiert"
 else
@@ -73,35 +76,35 @@ fi
 
 # ================================
 echo ""
-echo "[2/4] Zugriffskonfiguration"
+echo "[2/6] Zugriffskonfiguration"
 echo "----------------------------"
+echo ""
 
-USE_DOMAIN="n"
+USE_DOMAIN=""
 DOMAIN=""
 
-read -p "Soll das System ueber eine Domain erreichbar sein? (j/n): " USE_DOMAIN
+ask "Soll das System ueber eine Domain erreichbar sein? (j/n)" USE_DOMAIN
 
 if [[ "$USE_DOMAIN" == "j" || "$USE_DOMAIN" == "J" ]]; then
-  read -p "Domain eingeben (z.B. games.example.com): " DOMAIN
+  ask "Domain eingeben (z.B. games.example.com):" DOMAIN
   if [ -z "$DOMAIN" ]; then
-    error "Keine Domain eingegeben."
+    fail "Keine Domain eingegeben."
   fi
   info "Domain: $DOMAIN"
+  info "Nginx und SSL werden nach der Installation eingerichtet."
 else
   info "System wird nur ueber IP erreichbar sein (Port 3000)."
 fi
 
 # ================================
 echo ""
-echo "[3/4] Installation"
+echo "[3/6] Repository und Datenbank"
 echo "----------------------------"
 
-# Repository klonen
 info "Repository wird geklont..."
-git clone "$REPO_URL" "$INSTALL_DIR" > /dev/null 2>&1 || error "Repository konnte nicht geklont werden. Bitte REPO_URL in install.sh anpassen."
+git clone --depth 1 "$REPO_URL" "$INSTALL_DIR" > /dev/null 2>&1 || fail "Repository konnte nicht geklont werden."
 success "Repository geklont nach $INSTALL_DIR"
 
-# Datenbank einrichten
 info "Datenbank wird eingerichtet..."
 DB_PASSWORD=$(openssl rand -base64 24 | tr -dc 'a-zA-Z0-9' | head -c 24)
 
@@ -111,7 +114,6 @@ sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;
 sudo -u postgres psql -d "$DB_NAME" -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";' 2>/dev/null || true
 success "Datenbank eingerichtet"
 
-# .env erstellen
 info ".env wird generiert..."
 SESSION_SECRET=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 48)
 
@@ -136,42 +138,57 @@ EOF
 chmod 600 "$INSTALL_DIR/.env"
 success ".env generiert"
 
-# Abhaengigkeiten installieren
+# ================================
+echo ""
+echo "[4/6] Build"
+echo "----------------------------"
+
 info "Abhaengigkeiten werden installiert..."
 cd "$INSTALL_DIR"
-npm install --production=false 2>&1 | tail -1
+npm install --production=false > /dev/null 2>&1 || fail "npm install fehlgeschlagen."
 success "Abhaengigkeiten installiert"
 
-# Shared Types bauen
 info "Shared Types werden gebaut..."
-npx tsc -p shared/tsconfig.json 2>/dev/null
+npx tsc -p shared/tsconfig.json > /dev/null 2>&1 || fail "Shared Types Build fehlgeschlagen."
 success "Shared Types gebaut"
 
-# Migrationen
 info "Datenbank-Migrationen werden ausgefuehrt..."
 cd "$INSTALL_DIR/backend"
-npx tsx ./node_modules/.bin/knex migrate:latest --knexfile knexfile.ts 2>&1 | tail -3
+npx tsx ../node_modules/.bin/knex migrate:latest --knexfile knexfile.ts > /dev/null 2>&1 || {
+  warn "Migration mit hoisted knex fehlgeschlagen, versuche alternativen Pfad..."
+  npx tsx ./node_modules/.bin/knex migrate:latest --knexfile knexfile.ts > /dev/null 2>&1 || fail "Datenbank-Migrationen fehlgeschlagen."
+}
 success "Migrationen ausgefuehrt"
 
-# Frontend bauen
+info "Backend wird gebaut..."
+cd "$INSTALL_DIR/backend"
+npx tsc > /dev/null 2>&1 || fail "Backend Build fehlgeschlagen."
+success "Backend gebaut"
+
 info "Frontend wird gebaut..."
 cd "$INSTALL_DIR/frontend"
-npx vite build 2>&1 | tail -1
+npx vite build > /dev/null 2>&1 || fail "Frontend Build fehlgeschlagen."
 success "Frontend gebaut"
 
 # ================================
 echo ""
-echo "[4/4] Admin-Benutzer"
+echo "[5/6] Admin-Benutzer"
 echo "----------------------------"
 
 ADMIN_PASSWORD=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 12)
 
+info "Admin-Benutzer wird erstellt..."
 cd "$INSTALL_DIR/backend"
-npx tsx src/db/create-admin.ts "$ADMIN_PASSWORD" 2>/dev/null
-
+if ! npx tsx src/db/create-admin.ts "$ADMIN_PASSWORD" 2>&1; then
+  fail "Admin-Benutzer konnte nicht erstellt werden. Siehe Fehlerausgabe oben."
+fi
 success "Admin-Benutzer erstellt"
 
-# systemd Service
+# ================================
+echo ""
+echo "[6/6] Service und Netzwerk"
+echo "----------------------------"
+
 info "systemd-Service wird eingerichtet..."
 cat > "/etc/systemd/system/${SERVICE_NAME}.service" << EOF
 [Unit]
@@ -192,22 +209,15 @@ EnvironmentFile=$INSTALL_DIR/.env
 WantedBy=multi-user.target
 EOF
 
-# Backend bauen
-info "Backend wird gebaut..."
-cd "$INSTALL_DIR/backend"
-npx tsc 2>/dev/null
-success "Backend gebaut"
-
 systemctl daemon-reload
-systemctl enable "$SERVICE_NAME"
+systemctl enable "$SERVICE_NAME" > /dev/null 2>&1
 systemctl start "$SERVICE_NAME"
 success "Service gestartet"
 
-# SSL / Nginx
 if [ -n "$DOMAIN" ]; then
-  info "Nginx und SSL werden konfiguriert..."
+  info "Nginx wird konfiguriert..."
 
-  cat > "/etc/nginx/sites-available/$SERVICE_NAME" << EOF
+  cat > "/etc/nginx/sites-available/$SERVICE_NAME" << NGINXEOF
 server {
     listen 80;
     server_name $DOMAIN;
@@ -223,15 +233,25 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
     }
 }
-EOF
+NGINXEOF
 
   ln -sf "/etc/nginx/sites-available/$SERVICE_NAME" "/etc/nginx/sites-enabled/"
   rm -f /etc/nginx/sites-enabled/default
-  nginx -t 2>/dev/null && systemctl reload nginx
 
-  info "SSL-Zertifikat wird eingerichtet..."
-  certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email 2>&1 | tail -3
-  success "SSL eingerichtet"
+  if nginx -t 2>/dev/null; then
+    systemctl reload nginx
+    success "Nginx konfiguriert"
+  else
+    warn "Nginx-Konfiguration fehlerhaft. Bitte manuell pruefen."
+  fi
+
+  info "SSL-Zertifikat wird eingerichtet (Let's Encrypt)..."
+  if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email 2>&1 | tail -3; then
+    success "SSL eingerichtet"
+  else
+    warn "SSL-Einrichtung fehlgeschlagen. Ist die Domain auf diesen Server gerichtet?"
+    warn "SSL kann spaeter manuell eingerichtet werden: sudo certbot --nginx -d $DOMAIN"
+  fi
 
   ACCESS_URL="https://$DOMAIN"
 else
@@ -239,7 +259,6 @@ else
   ACCESS_URL="http://$SERVER_IP:3000"
 fi
 
-# Plugins-Verzeichnis
 mkdir -p "$INSTALL_DIR/plugins"
 
 echo ""
