@@ -2,7 +2,7 @@
   <div class="bibliothek">
     <section class="bib-header">
       <h1>Spielebibliothek</h1>
-      <p class="bib-sub">Alle verfuegbaren Spiele auf einen Blick</p>
+      <p class="bib-sub">Alle verfuegbaren Spiele als Kacheln</p>
     </section>
 
     <div v-if="loading" class="loading-state">Spiele werden geladen...</div>
@@ -12,45 +12,81 @@
       <p class="text-muted">Spiele werden als Plugins im Admin-Bereich hinzugefuegt.</p>
     </div>
 
-    <div v-else class="game-list">
-      <div
+    <div v-else class="game-grid">
+      <button
         v-for="(plugin, i) in plugins"
         :key="plugin.id"
-        class="game-item"
+        type="button"
+        class="game-card"
         :style="{ '--accent': colors[i % colors.length] }"
+        @click="openDetails(plugin, i)"
       >
-        <div class="game-item-icon">
+        <div class="game-card-icon">
           <img
             v-if="plugin.manifest?.icon"
             :src="`/plugins/${plugin.slug}/${plugin.manifest.icon}`"
             :alt="plugin.name"
-            class="game-item-img"
+            class="game-card-img"
           />
-          <span v-else class="game-item-letter">{{ plugin.name.charAt(0) }}</span>
+          <span v-else class="game-card-letter">{{ plugin.name.charAt(0) }}</span>
         </div>
 
-        <div class="game-item-info">
-          <h3>{{ plugin.name }}</h3>
-          <p class="game-item-desc">{{ plugin.manifest?.description || 'Keine Beschreibung' }}</p>
+        <div class="game-card-body">
+          <h3 class="game-card-title">{{ plugin.name }}</h3>
+          <p class="game-card-sub">{{ shortDescription(plugin) }}</p>
         </div>
 
-        <div class="game-item-meta">
-          <span class="meta-badge">{{ plugin.manifest?.minPlayers }}–{{ plugin.manifest?.maxPlayers }} Spieler</span>
-          <span class="meta-version">v{{ plugin.version }}</span>
+        <div class="game-card-footer">
+          <span class="players-pill">{{ plugin.manifest?.minPlayers }}–{{ plugin.manifest?.maxPlayers }} Spieler</span>
+          <span class="version-pill">v{{ plugin.version }}</span>
+        </div>
+      </button>
+    </div>
+
+    <div v-if="selectedPlugin" class="detail-overlay" @click.self="closeDetails">
+      <div class="detail-card card">
+        <div class="detail-header">
+          <div class="detail-icon" :style="{ '--accent': selectedAccent }">
+            <img
+              v-if="selectedPlugin.manifest?.icon"
+              :src="`/plugins/${selectedPlugin.slug}/${selectedPlugin.manifest.icon}`"
+              :alt="selectedPlugin.name"
+              class="detail-icon-img"
+            />
+            <span v-else class="detail-icon-letter">{{ selectedPlugin.name.charAt(0) }}</span>
+          </div>
+          <div>
+            <h2>{{ selectedPlugin.name }}</h2>
+            <p class="detail-sub">{{ shortDescription(selectedPlugin) }}</p>
+          </div>
         </div>
 
-        <div class="game-item-action">
+        <div class="detail-body">
+          <h3>Spielerklaerung</h3>
+          <p class="detail-text">{{ fullDescription(selectedPlugin) }}</p>
+
+          <ul class="detail-meta">
+            <li><strong>Spieler:</strong> {{ selectedPlugin.manifest?.minPlayers }}–{{ selectedPlugin.manifest?.maxPlayers }}</li>
+            <li><strong>Version:</strong> v{{ selectedPlugin.version }}</li>
+            <li v-if="selectedPlugin.manifest?.author"><strong>Autor:</strong> {{ selectedPlugin.manifest.author }}</li>
+          </ul>
+        </div>
+
+        <div class="detail-actions">
           <RouterLink
             v-if="auth.isLoggedIn"
             to="/multiplayer"
             class="play-btn"
-            :style="{ backgroundColor: colors[i % colors.length] }"
+            :style="{ backgroundColor: selectedAccent }"
+            @click="closeDetails"
           >
-            Spielen
+            Lobby erstellen
           </RouterLink>
-          <RouterLink v-else to="/login" class="play-btn">
-            Anmelden
+          <RouterLink v-else to="/login" class="play-btn" @click="closeDetails">
+            Anmelden und spielen
           </RouterLink>
+
+          <button type="button" class="btn-secondary close-btn" @click="closeDetails">Schliessen</button>
         </div>
       </div>
     </div>
@@ -58,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useAuthStore } from '../stores/auth.js';
 import { api } from '../api/client.js';
@@ -67,11 +103,40 @@ import type { Plugin } from '@mike-games/shared';
 const auth = useAuthStore();
 const plugins = ref<Plugin[]>([]);
 const loading = ref(true);
+const selectedPlugin = ref<Plugin | null>(null);
+const selectedPluginColorIndex = ref<number | null>(null);
 
 const colors = [
   '#f59e0b', '#6366f1', '#22c55e', '#ef4444', '#3b82f6', '#8b5cf6',
   '#ec4899', '#14b8a6', '#f97316', '#06b6d4',
 ];
+
+const selectedAccent = computed(() => {
+  if (selectedPluginColorIndex.value === null) return '#6366f1';
+  return colors[selectedPluginColorIndex.value % colors.length];
+});
+
+function shortDescription(plugin: Plugin) {
+  return plugin.manifest?.frontend?.bibliothek?.title
+    ?? plugin.manifest?.description
+    ?? 'Keine Kurzbeschreibung vorhanden.';
+}
+
+function fullDescription(plugin: Plugin) {
+  return plugin.manifest?.frontend?.bibliothek?.description
+    ?? plugin.manifest?.description
+    ?? 'Dieses Spiel hat noch keine detailierte Spielerklaerung hinterlegt.';
+}
+
+function openDetails(plugin: Plugin, colorIndex: number) {
+  selectedPlugin.value = plugin;
+  selectedPluginColorIndex.value = colorIndex;
+}
+
+function closeDetails() {
+  selectedPlugin.value = null;
+  selectedPluginColorIndex.value = null;
+}
 
 onMounted(async () => {
   try {
@@ -87,7 +152,7 @@ onMounted(async () => {
 
 <style scoped>
 .bibliothek {
-  max-width: 900px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 0 1.5rem;
 }
@@ -115,133 +180,206 @@ onMounted(async () => {
   color: var(--color-text-muted);
 }
 
-.game-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1rem;
   padding-bottom: 3rem;
 }
 
-.game-item {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 1.25rem;
+.game-card {
   background-color: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  transition: border-color var(--transition), transform var(--transition);
+  padding: 1rem;
+  text-align: left;
+  color: var(--color-text);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
 }
 
-.game-item:hover {
+.game-card:hover {
   border-color: var(--accent, var(--color-primary));
-  transform: translateX(4px);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
 }
 
-.game-item-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, var(--accent, var(--color-primary)), rgba(255,255,255,0.1));
+.game-card-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--accent, var(--color-primary)), rgba(15, 17, 23, 0.4));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-card-img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.game-card-letter {
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.game-card-body {
+  flex: 1;
+}
+
+.game-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.game-card-sub {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.game-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.players-pill {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  background-color: var(--color-bg-hover);
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+}
+
+.version-pill {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
+.detail-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 50;
+}
+
+.detail-card {
+  width: 100%;
+  max-width: 760px;
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.detail-icon {
+  width: 62px;
+  height: 62px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--accent, var(--color-primary)), rgba(15, 17, 23, 0.4));
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.game-item-img {
-  width: 30px;
-  height: 30px;
+.detail-icon-img {
+  width: 36px;
+  height: 36px;
   object-fit: contain;
 }
 
-.game-item-letter {
-  color: white;
-  font-size: 1.2rem;
+.detail-icon-letter {
+  color: #fff;
+  font-size: 1.5rem;
   font-weight: 700;
 }
 
-.game-item-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.game-item-info h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 0.2rem;
-}
-
-.game-item-desc {
-  font-size: 0.8rem;
+.detail-sub {
   color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.game-item-meta {
+.detail-body h3 {
+  margin-bottom: 0.4rem;
+}
+
+.detail-text {
+  margin-bottom: 1rem;
+  color: var(--color-text);
+}
+
+.detail-meta {
+  list-style: none;
+  padding: 0;
+  margin: 0;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.25rem;
-  flex-shrink: 0;
-}
-
-.meta-badge {
-  font-size: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   color: var(--color-text-muted);
-  background-color: var(--color-bg-hover);
-  padding: 0.2rem 0.6rem;
-  border-radius: 12px;
+  font-size: 0.85rem;
 }
 
-.meta-version {
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
-  opacity: 0.6;
+.detail-meta strong {
+  color: var(--color-text);
 }
 
-.game-item-action {
-  flex-shrink: 0;
+.detail-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
 }
 
 .play-btn {
   display: inline-block;
-  padding: 0.45rem 1rem;
+  padding: 0.5rem 1rem;
   border-radius: 20px;
   background-color: var(--color-primary);
   color: white;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   text-decoration: none;
   transition: opacity var(--transition), transform var(--transition);
 }
 
 .play-btn:hover {
-  opacity: 0.85;
-  transform: scale(1.05);
+  opacity: 0.9;
+  transform: scale(1.03);
   color: white;
 }
 
+.close-btn {
+  padding: 0.5rem 1rem;
+}
+
 @media (max-width: 768px) {
-  .game-item {
-    flex-wrap: wrap;
-    gap: 0.75rem;
+  .detail-actions {
+    flex-direction: column;
   }
 
-  .game-item-meta {
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .game-item-action {
-    width: 100%;
-  }
-
-  .play-btn {
-    display: block;
+  .play-btn,
+  .close-btn {
     text-align: center;
+    width: 100%;
   }
 }
 </style>

@@ -122,6 +122,20 @@ mein-spiel/
 | `frontend.bibliothek.coverImage` | `string` | Keins | Relativer Pfad zum Cover-Bild |
 | `frontend.adminSettings` | `string` | Keins | Relativer Pfad zur Admin-Einstellungskomponente |
 
+### Vorgabe fuer Bibliothek-Kachel und Spielerklaerung
+
+Die Bibliothek zeigt jedes Plugin als anklickbare Kachel. Beim Klick wird eine Detailansicht mit Spielerklaerung geoeffnet. Damit diese Ansicht nutzbar ist, gelten folgende Regeln:
+
+1. `frontend.bibliothek.description` soll eine **verstaendliche Spielerklaerung** enthalten:
+   - Spielziel
+   - Grundregeln
+   - Ablauf eines Zuges oder einer Runde
+   - Gewinn- bzw. Endbedingungen
+2. `frontend.bibliothek.title` soll eine kurze Unterzeile fuer die Kachel liefern.
+3. Falls `frontend.bibliothek.description` fehlt, faellt der Core auf `description` zurueck. Das ist nur ein Fallback und fuer produktive Plugins nicht ausreichend.
+
+Empfohlene Laenge fuer `frontend.bibliothek.description`: 300-1200 Zeichen.
+
 ### Validierung bei Installation
 
 Der Core prueft bei der Installation:
