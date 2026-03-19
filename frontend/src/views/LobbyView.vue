@@ -21,51 +21,20 @@
       </div>
     </div>
 
-    <div class="lobby-grid">
-      <div class="lobby-main">
-        <div class="card">
-          <h2>Spieler ({{ players.length }}/{{ lobby.maxPlayers }})</h2>
-          <ul class="player-list">
-            <li v-for="player in players" :key="player.userId" class="player-item">
-              <span class="player-name">{{ player.username }}</span>
-              <span v-if="player.userId === lobby.createdBy" class="host-badge">Host</span>
-            </li>
-          </ul>
-        </div>
+    <div v-if="lobby.status === 'wartend'" class="card">
+      <h2>Spieler ({{ players.length }}/{{ lobby.maxPlayers }})</h2>
+      <ul class="player-list">
+        <li v-for="player in players" :key="player.userId" class="player-item">
+          <span class="player-name">{{ player.username }}</span>
+          <span v-if="player.userId === lobby.createdBy" class="host-badge">Host</span>
+        </li>
+      </ul>
+    </div>
 
-        <div v-if="lobby.status === 'laeuft'" class="card game-area">
-          <h2>Spiel laeuft</h2>
-          <div id="plugin-game-container">
-            <!-- Plugin-Spielansicht wird hier geladen -->
-          </div>
-        </div>
-      </div>
-
-      <div class="lobby-chat">
-        <div class="card chat-card">
-          <h2>Chat</h2>
-          <div class="chat-messages" ref="chatContainer">
-            <div
-              v-for="(msg, i) in chatMessages"
-              :key="i"
-              :class="['chat-msg', { 'chat-system': msg.system }]"
-            >
-              <span v-if="!msg.system" class="chat-author">{{ msg.username }}:</span>
-              <span class="chat-text">{{ msg.message }}</span>
-              <span class="chat-time">{{ formatTime(msg.timestamp) }}</span>
-            </div>
-          </div>
-          <form @submit.prevent="sendMessage" class="chat-input-group">
-            <input
-              v-model="chatInput"
-              type="text"
-              placeholder="Nachricht..."
-              maxlength="500"
-              class="chat-input"
-            />
-            <button type="submit" class="btn-primary">Senden</button>
-          </form>
-        </div>
+    <div v-if="lobby.status === 'laeuft' || lobby.status === 'beendet'" class="game-container">
+      <component v-if="pluginComponent" :is="pluginComponent" />
+      <div v-else class="card loading-plugin">
+        <p>Plugin wird geladen...</p>
       </div>
     </div>
   </div>
@@ -76,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, markRaw, defineComponent, type Component } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api/client.js';
 import { useAuthStore } from '../stores/auth.js';
@@ -101,18 +70,9 @@ interface LobbyData {
   players: { userId: string; username: string }[];
 }
 
-interface ChatMsg {
-  username: string;
-  message: string;
-  system: boolean;
-  timestamp: string;
-}
-
 const lobby = ref<LobbyData | null>(null);
 const players = ref<{ userId: string; username: string }[]>([]);
-const chatMessages = ref<ChatMsg[]>([]);
-const chatInput = ref('');
-const chatContainer = ref<HTMLElement>();
+const pluginComponent = ref<Component | null>(null);
 
 const isCreator = computed(() => lobby.value?.createdBy === auth.user?.id);
 
@@ -134,6 +94,27 @@ async function loadLobby() {
   }
 }
 
+async function loadPluginFrontend() {
+  if (!lobby.value || pluginComponent.value) return;
+
+  try {
+    (window as unknown as Record<string, unknown>).socket = ws.socket;
+    const pluginUrl = `/plugins/${lobby.value.pluginSlug}/frontend/index.js?t=${Date.now()}`;
+    const mod = await import(/* @vite-ignore */ pluginUrl);
+    if (mod.default) {
+      pluginComponent.value = markRaw(defineComponent(mod.default));
+    }
+  } catch (err) {
+    console.error('Plugin-Frontend konnte nicht geladen werden:', err);
+  }
+}
+
+watch(() => lobby.value?.status, (newStatus) => {
+  if (newStatus === 'laeuft' || newStatus === 'beendet') {
+    loadPluginFrontend();
+  }
+});
+
 function setupSocketEvents() {
   ws.connect();
   ws.emit(WS_EVENTS.LOBBY_JOIN, { lobbyId: props.lobbyId });
@@ -154,22 +135,6 @@ function setupSocketEvents() {
     const d = data as { status: string };
     if (lobby.value) lobby.value.status = d.status;
   });
-
-  ws.on(WS_EVENTS.CHAT_MESSAGE, (data: unknown) => {
-    chatMessages.value.push(data as ChatMsg);
-    scrollChat();
-  });
-
-  ws.on('chat:system', (data: unknown) => {
-    chatMessages.value.push(data as ChatMsg);
-    scrollChat();
-  });
-}
-
-async function sendMessage() {
-  if (!chatInput.value.trim()) return;
-  ws.emit(WS_EVENTS.CHAT_MESSAGE, { message: chatInput.value });
-  chatInput.value = '';
 }
 
 async function startGame() {
@@ -183,21 +148,12 @@ async function leaveLobby() {
   router.push('/multiplayer');
 }
 
-function scrollChat() {
-  nextTick(() => {
-    if (chatContainer.value) {
-      chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
-    }
-  });
-}
-
-function formatTime(ts: string) {
-  return new Date(ts).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-}
-
-onMounted(() => {
-  loadLobby();
+onMounted(async () => {
   setupSocketEvents();
+  await loadLobby();
+  if (lobby.value?.status === 'laeuft' || lobby.value?.status === 'beendet') {
+    await loadPluginFrontend();
+  }
 });
 
 onUnmounted(() => {
@@ -205,8 +161,7 @@ onUnmounted(() => {
   ws.off(WS_EVENTS.LOBBY_PLAYER_JOINED);
   ws.off(WS_EVENTS.LOBBY_PLAYER_LEFT);
   ws.off(WS_EVENTS.LOBBY_STATUS_CHANGED);
-  ws.off(WS_EVENTS.CHAT_MESSAGE);
-  ws.off('chat:system');
+  delete (window as unknown as Record<string, unknown>).socket;
 });
 </script>
 
@@ -248,13 +203,6 @@ onUnmounted(() => {
 
 .lobby-actions { display: flex; gap: 0.5rem; }
 
-.lobby-grid {
-  display: grid;
-  grid-template-columns: 1fr 350px;
-  gap: 1rem;
-  height: calc(100vh - 200px);
-}
-
 h2 { font-size: 1rem; margin-bottom: 0.75rem; }
 
 .player-list {
@@ -281,57 +229,15 @@ h2 { font-size: 1rem; margin-bottom: 0.75rem; }
   border-radius: 4px;
 }
 
-.chat-card {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+.game-container {
+  min-height: 400px;
 }
 
-.chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  margin-bottom: 0.75rem;
-  max-height: calc(100vh - 360px);
-}
-
-.chat-msg {
-  font-size: 0.85rem;
-  padding: 0.25rem 0;
-  line-height: 1.4;
-}
-
-.chat-system {
+.loading-plugin {
+  text-align: center;
+  padding: 3rem;
   color: var(--color-text-muted);
-  font-style: italic;
 }
-
-.chat-author {
-  font-weight: 600;
-  color: var(--color-primary);
-  margin-right: 0.25rem;
-}
-
-.chat-time {
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
-  margin-left: 0.5rem;
-}
-
-.chat-input-group {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.chat-input { flex: 1; }
 
 .loading { text-align: center; padding: 3rem; color: var(--color-text-muted); }
-
-.game-area { margin-top: 1rem; }
-
-@media (max-width: 900px) {
-  .lobby-grid { grid-template-columns: 1fr; height: auto; }
-}
 </style>
