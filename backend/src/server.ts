@@ -63,7 +63,6 @@ async function start() {
   await fastify.register(fastifyStatic, {
     root: frontendDist,
     prefix: '/',
-    decorateReply: false,
   });
 
   const pluginsDir = path.resolve(__dirname, '../../plugins');
