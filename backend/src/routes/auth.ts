@@ -88,16 +88,16 @@ export async function authRoutes(fastify: FastifyInstance) {
     };
   });
 
-  fastify.post('/logout', { preHandler: requireAuth }, async (request, reply) => {
-    const userId = request.session.userId!;
-    await logAudit(db, userId, 'logout', {});
+  fastify.post('/logout', async (request, reply) => {
+    if (request.session?.userId) {
+      await logAudit(db, request.session.userId, 'logout', {});
 
-    await new Promise<void>((resolve, reject) => {
-      request.session.destroy((err) => {
-        if (err) reject(err);
-        else resolve();
+      await new Promise<void>((resolve) => {
+        request.session.destroy((err) => {
+          resolve();
+        });
       });
-    });
+    }
 
     reply.clearCookie('sessionId', { path: '/' });
     return { success: true };
