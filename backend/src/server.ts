@@ -6,7 +6,6 @@ import fastifyStatic from '@fastify/static';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyRateLimit from '@fastify/rate-limit';
 import { Server } from 'socket.io';
-import { createServer } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -92,9 +91,9 @@ async function start() {
     return reply.sendFile('index.html', frontendDist);
   });
 
-  const httpServer = createServer(fastify.server);
+  await fastify.ready();
 
-  const io = new Server(httpServer, {
+  const io = new Server(fastify.server, {
     cors: {
       origin: config.env === 'development' ? true : (config.domain ? `https://${config.domain}` : true),
       credentials: true,
@@ -105,8 +104,6 @@ async function start() {
   setPluginIO(io);
   setupWebSocket(io, db);
 
-  await fastify.ready();
-
   try {
     await loadAllPlugins(db, io, fastify);
     fastify.log.info('Plugins geladen');
@@ -116,15 +113,14 @@ async function start() {
 
   startLobbyTimeoutChecker(db);
 
-  httpServer.listen(config.port, config.host, () => {
-    fastify.log.info(`Server laeuft auf ${config.host}:${config.port}`);
-  });
+  await fastify.listen({ port: config.port, host: config.host });
+  fastify.log.info(`Server laeuft auf ${config.host}:${config.port}`);
 
   const shutdown = async () => {
     fastify.log.info('Server wird heruntergefahren...');
     stopLobbyTimeoutChecker();
     io.close();
-    httpServer.close();
+    await fastify.close();
     await db.destroy();
     process.exit(0);
   };
