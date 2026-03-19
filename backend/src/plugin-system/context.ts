@@ -141,6 +141,16 @@ export function createPluginContext(
       async getPlayerStats(userId) {
         const row = await db('player_stats')
           .where({ user_id: userId, plugin_id: pluginId })
+          .select(
+            'user_id as userId',
+            'plugin_id as pluginId',
+            'wins',
+            'losses',
+            'draws',
+            'total_score as totalScore',
+            'games_played as gamesPlayed',
+            'last_played as lastPlayed',
+          )
           .first();
         return row ?? null;
       },

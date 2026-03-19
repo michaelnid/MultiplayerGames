@@ -312,14 +312,14 @@ Ruft die Statistiken eines einzelnen Spielers fuer dieses Plugin ab.
 ```javascript
 // PlayerStats:
 {
-  user_id: string,      // UUID des Spielers
-  plugin_id: string,    // UUID des Plugins
+  userId: string,       // UUID des Spielers
+  pluginId: string,     // UUID des Plugins
   wins: number,         // Anzahl Siege
   losses: number,       // Anzahl Niederlagen
   draws: number,        // Anzahl Unentschieden
-  total_score: number,  // Gesamtpunktzahl
-  games_played: number, // Anzahl gespielter Spiele
-  last_played: string   // ISO-Zeitstempel des letzten Spiels (oder null)
+  totalScore: number,   // Gesamtpunktzahl
+  gamesPlayed: number,  // Anzahl gespielter Spiele
+  lastPlayed: string    // ISO-Zeitstempel des letzten Spiels (oder null)
 }
 ```
 
@@ -396,7 +396,7 @@ Registriert einen Handler, der aufgerufen wird, wenn ein Spieler der Lobby beitr
 | `handler` | `function(userId, lobbyId)` | Callback |
 
 ```javascript
-context.lobby.onPlayerJoin((userId, lobbyId) => {
+context.lobby.onPlayerJoin(async (userId, lobbyId) => {
   const spieler = await context.lobby.getPlayers(lobbyId);
   context.chat.sendSystem(lobbyId, `Spieler beigetreten (${spieler.length} insgesamt)`);
 });
