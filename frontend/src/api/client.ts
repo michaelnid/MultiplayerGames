@@ -9,11 +9,11 @@ async function request<T>(
 ): Promise<ApiResponse<T>> {
   const options: RequestInit = {
     method,
-    headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
   };
 
-  if (body && method !== 'GET') {
+  if (body !== undefined && body !== null && method !== 'GET') {
+    options.headers = { 'Content-Type': 'application/json' };
     options.body = JSON.stringify(body);
   }
 

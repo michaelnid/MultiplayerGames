@@ -173,13 +173,13 @@ async function sendMessage() {
 }
 
 async function startGame() {
-  await api.post(`/lobbies/${props.lobbyId}/start`);
+  await api.post(`/lobbies/${props.lobbyId}/start`, {});
   await loadLobby();
 }
 
 async function leaveLobby() {
   ws.emit(WS_EVENTS.LOBBY_LEAVE);
-  await api.post(`/lobbies/${props.lobbyId}/leave`);
+  await api.post(`/lobbies/${props.lobbyId}/leave`, {});
   router.push('/multiplayer');
 }
 
