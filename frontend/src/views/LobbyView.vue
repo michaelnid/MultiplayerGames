@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, markRaw, defineComponent, type Component } from 'vue';
+import { ref, computed, onMounted, onUnmounted, markRaw, defineComponent, type Component } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api/client.js';
 import { useAuthStore } from '../stores/auth.js';
@@ -108,12 +108,6 @@ async function loadPluginFrontend() {
     console.error('Plugin-Frontend konnte nicht geladen werden:', err);
   }
 }
-
-watch(() => lobby.value?.status, (newStatus) => {
-  if (newStatus === 'laeuft' || newStatus === 'beendet') {
-    loadPluginFrontend();
-  }
-});
 
 function setupSocketEvents() {
   ws.connect();
