@@ -149,24 +149,37 @@ npm install --production=false > /dev/null 2>&1 || fail "npm install fehlgeschla
 success "Abhaengigkeiten installiert"
 
 info "Shared Types werden gebaut..."
-BUILD_OUT=$(npx tsc -p shared/tsconfig.json 2>&1) || { echo "$BUILD_OUT"; fail "Shared Types Build fehlgeschlagen."; }
+set +e
+npx tsc -p shared/tsconfig.json 2>&1
+if [ $? -ne 0 ]; then fail "Shared Types Build fehlgeschlagen."; fi
+set -e
 success "Shared Types gebaut"
 
 info "Datenbank-Migrationen werden ausgefuehrt..."
 cd "$INSTALL_DIR/backend"
-BUILD_OUT=$(npx tsx ../node_modules/.bin/knex migrate:latest --knexfile knexfile.ts 2>&1) || {
-  BUILD_OUT=$(npx tsx ./node_modules/.bin/knex migrate:latest --knexfile knexfile.ts 2>&1) || { echo "$BUILD_OUT"; fail "Datenbank-Migrationen fehlgeschlagen."; }
-}
+set +e
+npx tsx ../node_modules/.bin/knex migrate:latest --knexfile knexfile.ts > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+  npx tsx ./node_modules/.bin/knex migrate:latest --knexfile knexfile.ts 2>&1
+  if [ $? -ne 0 ]; then fail "Datenbank-Migrationen fehlgeschlagen."; fi
+fi
+set -e
 success "Migrationen ausgefuehrt"
 
 info "Backend wird gebaut..."
 cd "$INSTALL_DIR/backend"
-BUILD_OUT=$(npx tsc 2>&1) || { echo "$BUILD_OUT"; fail "Backend Build fehlgeschlagen."; }
+set +e
+npx tsc 2>&1
+if [ $? -ne 0 ]; then fail "Backend Build fehlgeschlagen. Siehe Fehlerausgabe oben."; fi
+set -e
 success "Backend gebaut"
 
 info "Frontend wird gebaut..."
 cd "$INSTALL_DIR/frontend"
-BUILD_OUT=$(npx vite build 2>&1) || { echo "$BUILD_OUT"; fail "Frontend Build fehlgeschlagen."; }
+set +e
+npx vite build 2>&1
+if [ $? -ne 0 ]; then fail "Frontend Build fehlgeschlagen. Siehe Fehlerausgabe oben."; fi
+set -e
 success "Frontend gebaut"
 
 # ================================
