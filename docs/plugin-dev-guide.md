@@ -11,17 +11,18 @@ Dieses Dokument beschreibt vollstaendig, wie Plugins fuer das MIKE Multiplayer G
 3. [manifest.json -- Spezifikation](#manifestjson----spezifikation)
 4. [Backend-API (context-Objekt)](#backend-api-context-objekt)
 5. [Frontend-API](#frontend-api)
-6. [Statische Assets](#statische-assets)
-7. [Admin-Einstellungskomponente](#admin-einstellungskomponente)
-8. [WebSocket-Ereignisse und Namenskonventionen](#websocket-ereignisse-und-namenskonventionen)
-9. [Lobby-Lebenszyklus](#lobby-lebenszyklus)
-10. [Fehlerbehandlung](#fehlerbehandlung)
-11. [Sicherheitsregeln](#sicherheitsregeln)
-12. [Verbindliche Regeln fuer Plugin-Entwickler](#verbindliche-regeln-fuer-plugin-entwickler)
-13. [Plugin-Limits und Einschraenkungen](#plugin-limits-und-einschraenkungen)
-14. [ZIP-Paket erstellen und installieren](#zip-paket-erstellen-und-installieren)
-15. [Versionierung und Kompatibilitaet](#versionierung-und-kompatibilitaet)
-16. [Vollstaendiges Beispiel-Plugin](#vollstaendiges-beispiel-plugin)
+6. [Design-Richtlinien](#design-richtlinien)
+7. [Statische Assets](#statische-assets)
+8. [Admin-Einstellungskomponente](#admin-einstellungskomponente)
+9. [WebSocket-Ereignisse und Namenskonventionen](#websocket-ereignisse-und-namenskonventionen)
+10. [Lobby-Lebenszyklus](#lobby-lebenszyklus)
+11. [Fehlerbehandlung](#fehlerbehandlung)
+12. [Sicherheitsregeln](#sicherheitsregeln)
+13. [Verbindliche Regeln fuer Plugin-Entwickler](#verbindliche-regeln-fuer-plugin-entwickler)
+14. [Plugin-Limits und Einschraenkungen](#plugin-limits-und-einschraenkungen)
+15. [ZIP-Paket erstellen und installieren](#zip-paket-erstellen-und-installieren)
+16. [Versionierung und Kompatibilitaet](#versionierung-und-kompatibilitaet)
+17. [Vollstaendiges Beispiel-Plugin](#vollstaendiges-beispiel-plugin)
 
 ---
 
@@ -537,55 +538,335 @@ context.chat.sendSystem(lobbyId, `${gewinnerName} hat gewonnen!`);
 
 ## Frontend-API
 
-Im Frontend koennen Plugins die Core-WebSocket-Verbindung und Lobby-Daten nutzen. Die Kommunikation laeuft ueber die Socket.IO-Verbindung des Core.
+### Komponentenformat
+
+Die Frontend-Datei (`frontend/index.js`) muss ein Vue-Options-Objekt als Default-Export bereitstellen. Die Komponente wird vom Core innerhalb der Lobby-Ansicht gerendert. Der Core uebernimmt das Laden, Mounten und Zerstoeren der Komponente.
+
+```javascript
+export default {
+  template: `
+    <div class="card">
+      <h2>Mein Spiel</h2>
+      <p>Spielinhalt hier...</p>
+    </div>
+  `,
+
+  data() {
+    return {
+      state: null,
+      error: '',
+    };
+  },
+
+  mounted() {
+    if (typeof socket === 'undefined' || !socket) {
+      this.error = 'Socket-Verbindung nicht verfuegbar.';
+      return;
+    }
+
+    this.socketRef = socket;
+    this.socketRef.on('plugin:mein-spiel:state', (data) => {
+      this.state = data;
+    });
+
+    this.emitGameEvent('init-request', {});
+  },
+
+  beforeUnmount() {
+    if (this.socketRef) {
+      this.socketRef.off('plugin:mein-spiel:state');
+    }
+  },
+
+  methods: {
+    emitGameEvent(event, data) {
+      if (!this.socketRef) return;
+      this.socketRef.emit('game:event', { event, data });
+    },
+  },
+};
+```
+
+**Wichtig:** Nur Vue Options API mit `template`-String verwenden. Single File Components (`.vue`-Dateien) werden nicht unterstuetzt, da Plugins als reines JavaScript ohne Build-Schritt ausgeliefert werden.
+
+### Socket-Bereitstellung und Lebenszyklus
+
+Der Core stellt die Socket.IO-Verbindung als globale Variable `socket` (= `window.socket`) bereit, **bevor** die Plugin-Komponente gemountet wird. Der Ablauf ist:
+
+1. Spieler oeffnet die Lobby-Seite.
+2. Core baut WebSocket-Verbindung auf und authentifiziert den Spieler.
+3. Core sendet `lobby:join` an den Server.
+4. Server bestaetigt den Beitritt.
+5. Core setzt `window.socket` auf die verbundene Socket.IO-Instanz.
+6. Core laedt und mountet die Plugin-Komponente.
+
+Das bedeutet: Wenn `mounted()` aufgerufen wird, ist die Socket-Verbindung bereits authentifiziert und der Spieler ist dem Lobby-Raum beigetreten. Die Plugin-Komponente kann sofort Events senden und empfangen.
+
+**Sicherheitspruefung in `mounted()`:** Trotzdem sollte immer geprueft werden, ob `socket` verfuegbar ist:
+
+```javascript
+mounted() {
+  if (typeof socket === 'undefined' || !socket) {
+    this.error = 'Socket-Verbindung nicht verfuegbar.';
+    return;
+  }
+  this.socketRef = socket;
+  // Event-Listener registrieren und Init-Request senden
+}
+```
+
+**Aufraeumen in `beforeUnmount()`:** Alle registrierten Event-Listener muessen entfernt werden, um Memory-Leaks zu vermeiden:
+
+```javascript
+beforeUnmount() {
+  if (this.socketRef) {
+    this.socketRef.off('plugin:mein-spiel:state');
+    this.socketRef.off('plugin:mein-spiel:error');
+  }
+}
+```
 
 ### WebSocket-Events empfangen
 
 Plugin-Events kommen beim Client mit dem Praefix `plugin:<slug>:` an:
 
 ```javascript
-// Im Plugin-Frontend:
 // Wenn das Backend context.ws.broadcast(lobbyId, 'spielzug', data) aufruft,
 // kommt das Event als 'plugin:mein-spiel:spielzug' beim Client an.
 
-socket.on('plugin:mein-spiel:spielzug', (data) => {
+this.socketRef.on('plugin:mein-spiel:spielzug', (data) => {
   // data = die im Backend gesendeten Daten
 });
 ```
 
 ### WebSocket-Events senden
 
-Plugins senden Game-Events ueber den Core-Event `game:event`:
+Plugins senden Game-Events ueber den Core-Event `game:event`. Der Core leitet dieses Event an das Plugin-Backend weiter UND broadcastet es an alle Spieler in der Lobby:
 
 ```javascript
-socket.emit('game:event', {
+this.socketRef.emit('game:event', {
   event: 'spielzug',
   data: { x: 3, y: 5 },
 });
 ```
 
-Dieses Event wird vom Core an alle Spieler in der gleichen Lobby weitergeleitet.
+Im Backend wird dieses Event ueber `context.ws.onMessage('spielzug', handler)` empfangen. Das `event`-Feld bestimmt, welcher Handler aufgerufen wird.
 
-### Chat
+### Chat (Systemnachrichten)
 
-Der Chat wird vom Core verwaltet. Spieler senden Nachrichten ueber:
-
-```javascript
-socket.emit('chat:message', { message: 'Hallo!' });
-```
-
-Eingehende Nachrichten:
+Der Chat wird vom Core verwaltet. Plugins koennen ueber das Backend Systemnachrichten senden (`context.chat.sendSystem()`). Eingehende Systemnachrichten:
 
 ```javascript
-// Spielernachrichten
-socket.on('chat:message', (msg) => {
-  // msg = { userId, username, message, system: false, timestamp }
-});
-
-// Systemnachrichten (vom Plugin-Backend via context.chat.sendSystem)
-socket.on('chat:system', (msg) => {
+this.socketRef.on('chat:system', (msg) => {
   // msg = { message, system: true, timestamp }
 });
+```
+
+---
+
+## Design-Richtlinien
+
+Plugins muessen sich optisch in das Core-Design einfuegen. Der Core verwendet ein dunkles Farbschema mit abgerundeten Kacheln (Cards). Plugins, die ein eigenes helles oder inkompatibles Design verwenden, wirken visuell fremd und werden nicht akzeptiert.
+
+### CSS-Variablen des Core
+
+Der Core definiert folgende CSS Custom Properties auf `:root`. Diese stehen allen Plugin-Komponenten automatisch zur Verfuegung:
+
+| Variable | Wert | Verwendung |
+|----------|------|------------|
+| `--color-bg` | `#0f1117` | Seiten-Hintergrund (dunkel) |
+| `--color-bg-secondary` | `#1a1d27` | Sekundaerer Hintergrund, Input-Felder |
+| `--color-bg-card` | `#222533` | Kachel/Card-Hintergrund |
+| `--color-bg-hover` | `#2a2d3e` | Hover-Zustand fuer Elemente |
+| `--color-border` | `#333650` | Raender und Trennlinien |
+| `--color-text` | `#e4e6f0` | Primaere Textfarbe (hell auf dunkel) |
+| `--color-text-muted` | `#8b8fa3` | Sekundaerer/gedaempfter Text |
+| `--color-primary` | `#6366f1` | Akzentfarbe (Indigo/Lila) |
+| `--color-primary-hover` | `#5254cc` | Hover fuer Primaerfarbe |
+| `--color-success` | `#22c55e` | Erfolg, positiv |
+| `--color-warning` | `#f59e0b` | Warnung |
+| `--color-danger` | `#ef4444` | Fehler, Gefahr |
+| `--color-info` | `#3b82f6` | Info, Hinweis |
+| `--radius` | `8px` | Standard-Eckenradius |
+| `--radius-lg` | `12px` | Groesserer Eckenradius (Cards) |
+| `--shadow` | `0 2px 8px rgba(0,0,0,0.3)` | Standard-Schatten |
+| `--transition` | `150ms ease` | Standard-Uebergangszeit |
+
+### Verfuegbare CSS-Klassen
+
+Der Core stellt globale CSS-Klassen bereit, die Plugins direkt verwenden koennen und sollen:
+
+#### `.card` -- Kachel/Container
+
+Hauptcontainer fuer Inhaltsabschnitte. Verwendet den dunklen Card-Hintergrund mit Rahmen, Schatten und abgerundeten Ecken.
+
+```html
+<div class="card">
+  <h2>Spielfeld</h2>
+  <p>Inhalt hier...</p>
+</div>
+```
+
+Ergebnis: Dunkle Kachel mit `background-color: var(--color-bg-card)`, `border: 1px solid var(--color-border)`, `border-radius: var(--radius-lg)`, `padding: 1.5rem`, `box-shadow: var(--shadow)`.
+
+#### Buttons
+
+| Klasse | Verwendung | Aussehen |
+|--------|------------|----------|
+| `btn-primary` | Hauptaktion (z.B. "Wuerfeln", "Spielen") | Lila Hintergrund, weisser Text |
+| `btn-secondary` | Sekundaeraktion (z.B. "Abbrechen") | Dunkler Hintergrund, heller Rahmen |
+| `btn-danger` | Destruktive Aktion (z.B. "Aufgeben") | Roter Hintergrund, weisser Text |
+
+```html
+<button class="btn-primary" @click="wuerfeln">Wuerfeln</button>
+<button class="btn-secondary" @click="passen">Passen</button>
+<button class="btn-danger" @click="aufgeben">Aufgeben</button>
+```
+
+#### Formulare
+
+`input`, `select` und `textarea` werden global gestylt. Einfach die Standard-HTML-Elemente verwenden:
+
+```html
+<label>Anzahl Runden</label>
+<input type="number" v-model.number="runden" min="1" max="20" />
+```
+
+### Inline-Styles mit CSS-Variablen
+
+Wenn zusaetzliche Inline-Styles noetig sind (z.B. fuer dynamische Layouts), muessen die CSS-Variablen des Core verwendet werden. Keine hartcodierten Farbwerte verwenden.
+
+**Richtig:**
+
+```javascript
+styles: {
+  spielfeld: {
+    padding: '1rem',
+    borderRadius: 'var(--radius-lg)',
+    backgroundColor: 'var(--color-bg-card)',
+    border: '1px solid var(--color-border)',
+  },
+  spielerName: {
+    color: 'var(--color-text)',
+    fontWeight: '600',
+  },
+  hinweis: {
+    color: 'var(--color-text-muted)',
+    fontSize: '0.875rem',
+  },
+  fehler: {
+    color: 'var(--color-danger)',
+    fontWeight: '600',
+  },
+  aktiv: {
+    color: 'var(--color-success)',
+  },
+  hervorgehoben: {
+    backgroundColor: 'var(--color-bg-hover)',
+    borderColor: 'var(--color-primary)',
+  },
+}
+```
+
+**Falsch -- niemals so:**
+
+```javascript
+// VERBOTEN: Hartcodierte helle Farben
+styles: {
+  root: {
+    background: '#fff',           // Bricht das dunkle Theme
+    color: '#333',                // Unlesbar auf dunklem Hintergrund
+    border: '1px solid #d9d9d9', // Passt nicht zum Core-Farbschema
+  },
+}
+```
+
+### Gestaltungsprinzipien
+
+1. **Dunkles Theme ist Pflicht.** Der Core verwendet ein dunkles Farbschema. Plugins muessen dieselben Farben nutzen. Helle Hintergruende (`#fff`, `#f5f5f5`, etc.) sind verboten.
+
+2. **`.card`-Klasse fuer Abschnitte verwenden.** Jeder visuell abgegrenzte Bereich (Spielfeld, Scoreboard, Steuerung) soll in einer `.card`-Kachel liegen. Das sorgt fuer ein einheitliches Erscheinungsbild.
+
+3. **Core-Buttons verwenden.** Statt eigene Button-Styles zu definieren, die Klassen `btn-primary`, `btn-secondary` und `btn-danger` nutzen.
+
+4. **Schriftgroessen und Abstaende konsistent halten.** Der Core verwendet `0.875rem` fuer Standardtext und `1rem` als Basisgroesse. Abstaende in `rem` angeben, nicht in `px`.
+
+5. **Keine externen Schriften.** Die Core-Schrift (System-Font-Stack) wird automatisch vererbt. Keine eigenen Schriften laden.
+
+6. **Responsive Layouts.** CSS Grid oder Flexbox verwenden. Absolute Positionierung und feste Pixelbreiten vermeiden.
+
+7. **Interaktive Elemente muessen erkennbar sein.** Hover-Zustaende mit `var(--color-bg-hover)` oder `var(--color-primary-hover)` kennzeichnen.
+
+### Vollstaendiges Design-Beispiel
+
+Ein typischer Plugin-Container, der sich korrekt in das Core-Design einfuegt:
+
+```javascript
+export default {
+  template: `
+    <div>
+      <div class="card" style="margin-bottom: 1rem;">
+        <h2 style="margin-bottom: 0.75rem; color: var(--color-text);">Spielfeld</h2>
+        <p v-if="error" style="color: var(--color-danger); font-weight: 600;">{{ error }}</p>
+
+        <div v-if="!state" style="text-align: center; padding: 2rem; color: var(--color-text-muted);">
+          Lade Spielstand...
+        </div>
+
+        <div v-else>
+          <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
+            Am Zug: <strong style="color: var(--color-text);">{{ state.aktuellerSpieler }}</strong>
+          </p>
+
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+            <button
+              v-for="(item, i) in state.felder"
+              :key="i"
+              @click="waehlen(i)"
+              :style="{
+                minWidth: '60px',
+                padding: '0.5rem',
+                borderRadius: 'var(--radius)',
+                border: item.ausgewaehlt
+                  ? '2px solid var(--color-primary)'
+                  : '1px solid var(--color-border)',
+                backgroundColor: item.ausgewaehlt
+                  ? 'var(--color-bg-hover)'
+                  : 'var(--color-bg-secondary)',
+                color: 'var(--color-text)',
+                cursor: 'pointer',
+              }"
+            >
+              {{ item.wert }}
+            </button>
+          </div>
+
+          <button class="btn-primary" @click="bestaetige">Bestaetigen</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom: 0.75rem; color: var(--color-text);">Punkte</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
+          <div
+            v-for="spieler in state?.spieler"
+            :key="spieler.id"
+            :style="{
+              padding: '0.75rem',
+              borderRadius: 'var(--radius)',
+              border: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-bg-secondary)',
+            }"
+          >
+            <strong style="color: var(--color-text);">{{ spieler.name }}</strong>
+            <span style="float: right; color: var(--color-primary);">{{ spieler.punkte }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `,
+  // ... data, mounted, methods wie oben beschrieben
+};
 ```
 
 ---
@@ -835,7 +1116,7 @@ Alternativ:
 
 ### Pflichten des Plugins im Lebenszyklus
 
-1. **Spiel starten:** Der Core setzt den Status auf `laeuft`, wenn der GameMaster startet. Das Plugin erhaelt dieses Signal nicht direkt -- es muss auf eingehende Game-Events reagieren.
+1. **Spiel starten:** Der Core setzt den Status auf `laeuft`, wenn der GameMaster startet. Anschliessend laedt der Core das Plugin-Frontend und mountet die Komponente. In `mounted()` sollte das Plugin einen `init-request` Game-Event senden, um den initialen Spielzustand vom Backend anzufordern. Das Backend erstellt daraufhin die Spielinstanz und sendet den Zustand an alle Spieler.
 2. **Ergebnisse melden:** Am Ende des Spiels **muss** das Plugin fuer jeden Spieler `context.stats.recordResult()` aufrufen.
 3. **Status beenden:** Das Plugin **muss** `context.lobby.setStatus(lobbyId, 'beendet')` aufrufen, wenn das Spiel vorbei ist. Ohne diesen Aufruf bleibt die Lobby aktiv.
 
@@ -917,6 +1198,8 @@ Diese Regeln sind verbindlich. Plugins, die sie verletzen, koennen vom System ab
 11. **Maximale ZIP-Groesse: 50 MB.** Plugins, die groesser sind, werden bei der Installation abgelehnt.
 
 12. **ESM-Format verwenden.** Backend-Module muessen `export default` oder `export function register` verwenden. CommonJS (`module.exports`) wird nicht unterstuetzt.
+
+13. **Core-Design einhalten.** Plugins muessen das dunkle Farbschema des Core verwenden. Alle Farben ueber CSS-Variablen (`var(--color-bg-card)`, `var(--color-text)`, etc.) referenzieren. Hartcodierte helle Farben (`#fff`, `#f5f5f5`, `#333`) sind verboten. Die `.card`-Klasse fuer Container und `btn-primary`/`btn-secondary`/`btn-danger` fuer Buttons verwenden. Details siehe Abschnitt [Design-Richtlinien](#design-richtlinien).
 
 ---
 
@@ -1144,6 +1427,172 @@ export default async function(context) {
 }
 ```
 
+#### frontend/index.js
+
+```javascript
+export default {
+  template: `
+    <div>
+      <div class="card" style="margin-bottom: 1rem;">
+        <h2 style="margin-bottom: 0.75rem;">Zahlenraten</h2>
+
+        <p v-if="error" style="color: var(--color-danger); font-weight: 600;">{{ error }}</p>
+
+        <div v-if="!phase" style="text-align: center; padding: 2rem; color: var(--color-text-muted);">
+          Lade Spielstand...
+        </div>
+
+        <div v-else-if="phase === 'waehlen'">
+          <p style="color: var(--color-text-muted); margin-bottom: 0.75rem;">
+            Der Spielleiter waehlt eine geheime Zahl zwischen 1 und 100.
+          </p>
+          <div v-if="istSpielleiter" style="display: flex; gap: 0.5rem; align-items: flex-end;">
+            <div style="flex: 0 0 120px;">
+              <label>Geheime Zahl</label>
+              <input type="number" v-model.number="geheimeZahl" min="1" max="100" />
+            </div>
+            <button class="btn-primary" @click="zahlWaehlen" :disabled="geheimeZahl < 1 || geheimeZahl > 100">
+              Zahl festlegen
+            </button>
+          </div>
+          <p v-else style="color: var(--color-text-muted);">
+            Warte auf den Spielleiter...
+          </p>
+        </div>
+
+        <div v-else-if="phase === 'raten'">
+          <p style="color: var(--color-text-muted); margin-bottom: 0.75rem;">
+            Runden: {{ aktuelleRunde }} / {{ maxRunden }}
+          </p>
+
+          <div v-if="!istSpielleiter" style="display: flex; gap: 0.5rem; align-items: flex-end; margin-bottom: 1rem;">
+            <div style="flex: 0 0 120px;">
+              <label>Dein Tipp</label>
+              <input type="number" v-model.number="meinTipp" min="1" max="100" />
+            </div>
+            <button class="btn-primary" @click="raten" :disabled="meinTipp < 1 || meinTipp > 100">
+              Raten
+            </button>
+          </div>
+          <p v-else style="color: var(--color-text-muted); margin-bottom: 1rem;">
+            Du bist der Spielleiter. Warte auf die Tipps.
+          </p>
+
+          <div v-if="tipps.length > 0">
+            <h3 style="margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--color-text-muted);">Bisherige Tipps</h3>
+            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+              <div
+                v-for="(tipp, i) in tipps"
+                :key="i"
+                :style="{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: 'var(--radius)',
+                  backgroundColor: tipp.treffer ? 'rgba(34, 197, 94, 0.15)' : 'var(--color-bg-secondary)',
+                  border: tipp.treffer ? '1px solid var(--color-success)' : '1px solid var(--color-border)',
+                }"
+              >
+                <span>{{ tipp.username }} tippte <strong>{{ tipp.tipp }}</strong></span>
+                <span :style="{ color: hinweisfarbe(tipp.hinweis), fontWeight: '600' }">{{ tipp.hinweis }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-else-if="phase === 'beendet'" class="card" style="text-align: center; padding: 2rem;">
+          <h3 style="color: var(--color-success); margin-bottom: 0.5rem;">Spiel beendet!</h3>
+          <p>Die geheime Zahl war <strong style="color: var(--color-primary);">{{ ergebnis.geheimeZahl }}</strong>.</p>
+        </div>
+      </div>
+    </div>
+  `,
+
+  data() {
+    return {
+      socketRef: null,
+      error: '',
+      phase: null,
+      istSpielleiter: false,
+      geheimeZahl: 50,
+      meinTipp: 50,
+      tipps: [],
+      aktuelleRunde: 0,
+      maxRunden: 5,
+      ergebnis: null,
+    };
+  },
+
+  mounted() {
+    if (typeof socket === 'undefined' || !socket) {
+      this.error = 'Socket-Verbindung nicht verfuegbar.';
+      return;
+    }
+
+    this.socketRef = socket;
+
+    this.onGestartet = (data) => {
+      this.phase = 'raten';
+      this.maxRunden = data.maxRunden;
+      this.istSpielleiter = data.spielleiter === this.eigeneUserId();
+    };
+
+    this.onTippErgebnis = (data) => {
+      this.tipps.push(data);
+      this.aktuelleRunde++;
+    };
+
+    this.onBeendet = (data) => {
+      this.phase = 'beendet';
+      this.ergebnis = data;
+    };
+
+    this.socketRef.on('plugin:zahlenraten:spiel-gestartet', this.onGestartet);
+    this.socketRef.on('plugin:zahlenraten:tipp-ergebnis', this.onTippErgebnis);
+    this.socketRef.on('plugin:zahlenraten:spiel-beendet', this.onBeendet);
+
+    this.phase = 'waehlen';
+  },
+
+  beforeUnmount() {
+    if (!this.socketRef) return;
+    this.socketRef.off('plugin:zahlenraten:spiel-gestartet', this.onGestartet);
+    this.socketRef.off('plugin:zahlenraten:tipp-ergebnis', this.onTippErgebnis);
+    this.socketRef.off('plugin:zahlenraten:spiel-beendet', this.onBeendet);
+  },
+
+  methods: {
+    eigeneUserId() {
+      return ''; // Wird vom Core nicht direkt bereitgestellt; alternativ aus dem State ablesen
+    },
+
+    zahlWaehlen() {
+      this.emitGameEvent('zahl-waehlen', { zahl: this.geheimeZahl });
+    },
+
+    raten() {
+      this.emitGameEvent('raten', { tipp: this.meinTipp });
+    },
+
+    emitGameEvent(event, data) {
+      if (!this.socketRef) return;
+      this.socketRef.emit('game:event', { event, data });
+    },
+
+    hinweisfarbe(hinweis) {
+      const farben = {
+        'Treffer!': 'var(--color-success)',
+        'Sehr nah!': 'var(--color-warning)',
+        'Warm': 'var(--color-info)',
+        'Kalt': 'var(--color-text-muted)',
+        'Weit daneben': 'var(--color-danger)',
+      };
+      return farben[hinweis] || 'var(--color-text)';
+    },
+  },
+};
+```
+
 #### frontend/settings.js
 
 ```javascript
@@ -1154,9 +1603,11 @@ export default {
       <div style="margin-bottom: 1rem;">
         <label>Maximale Runden pro Spieler</label>
         <input type="number" v-model.number="maxRunden" @change="save" min="1" max="20"
-               style="width: 80px; padding: 0.4rem;" />
+               style="width: 80px;" />
       </div>
-      <p v-if="status">{{ status }}</p>
+      <p v-if="status" :style="{ color: status === 'Gespeichert' ? 'var(--color-success)' : 'var(--color-danger)' }">
+        {{ status }}
+      </p>
     </div>
   `,
   data() {
