@@ -5,12 +5,6 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
-      path: '/login',
-      name: 'login',
-      component: () => import('../views/LoginView.vue'),
-      meta: { guest: true },
-    },
-    {
       path: '/',
       component: () => import('../layouts/PublicLayout.vue'),
       children: [
@@ -23,6 +17,12 @@ export const router = createRouter({
           path: 'bibliothek',
           name: 'bibliothek',
           component: () => import('../views/BibliothekView.vue'),
+        },
+        {
+          path: 'login',
+          name: 'login',
+          component: () => import('../views/LoginView.vue'),
+          meta: { guest: true },
         },
       ],
     },
