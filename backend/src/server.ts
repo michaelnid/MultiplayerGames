@@ -84,7 +84,7 @@ async function start() {
   });
 
   fastify.get('/favicon.ico', async (_request, reply) => {
-    return reply.sendFile('favicon.svg', frontendDist);
+    return reply.redirect('/favicon.svg');
   });
 
   fastify.setNotFoundHandler(async (request, reply) => {
