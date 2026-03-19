@@ -187,6 +187,8 @@ export async function register(context, fastify) {
 }
 ```
 
+**Warnung:** Wenn das Backend-Modul weder `default` noch `register` exportiert, wird das Plugin stillschweigend nicht initialisiert. Es erscheint lediglich eine Warnung in der Server-Konsole. Stellen Sie sicher, dass der Einstiegspunkt eine der beiden Funktionen korrekt exportiert.
+
 ### context.ws -- WebSocket-Kommunikation
 
 Alle WebSocket-Events des Plugins werden automatisch mit dem Praefix `plugin:<slug>:` versehen. Das heisst: Wenn das Plugin das Event `spielzug` sendet, kommt es beim Client als `plugin:mein-spiel:spielzug` an.
@@ -623,13 +625,33 @@ export default {
 Der Core stellt die Socket.IO-Verbindung als globale Variable `socket` (= `window.socket`) bereit, **bevor** die Plugin-Komponente gemountet wird. Der Ablauf ist:
 
 1. Spieler oeffnet die Lobby-Seite.
-2. Core baut WebSocket-Verbindung auf und authentifiziert den Spieler.
+2. Core stellt die WebSocket-Verbindung her (falls nicht bereits verbunden) und authentifiziert den Spieler.
 3. Core sendet `lobby:join` an den Server.
-4. Server bestaetigt den Beitritt.
-5. Core setzt `window.socket` auf die verbundene Socket.IO-Instanz.
-6. Core laedt und mountet die Plugin-Komponente.
+4. Core setzt `window.socket`, `window.currentUserId` und `window.lobbyId`.
+5. Core laedt und mountet die Plugin-Komponente.
 
 Das bedeutet: Wenn `mounted()` aufgerufen wird, ist die Socket-Verbindung bereits authentifiziert und der Spieler ist dem Lobby-Raum beigetreten. Die Plugin-Komponente kann sofort Events senden und empfangen.
+
+### Spieler-ID und Lobby-ID
+
+Der Core stellt zusaetzlich zur Socket-Verbindung zwei weitere globale Variablen bereit:
+
+| Variable | Typ | Beschreibung |
+|----------|-----|-------------|
+| `window.currentUserId` | `string` (UUID) | ID des eingeloggten Spielers |
+| `window.lobbyId` | `string` (UUID) | ID der aktuellen Lobby |
+
+Beide werden **vor** dem Mounten der Plugin-Komponente gesetzt und beim Unmounten automatisch aufgeraeumt.
+
+```javascript
+// Eigene Spieler-ID ermitteln
+const meineId = window.currentUserId;
+
+// Pruefen ob ein Spieler "ich" ist
+function binIchDran(state) {
+  return state.currentPlayerId === window.currentUserId;
+}
+```
 
 **Sicherheitspruefung in `mounted()`:** Trotzdem sollte immer geprueft werden, ob `socket` verfuegbar ist:
 
@@ -1333,6 +1355,28 @@ Dabei werden alle Plugin-Daten (Einstellungen, Statistiken) geloescht. Fuer ein 
 
 ## Vollstaendiges Beispiel-Plugin
 
+### Referenz-Plugin: Kniffel
+
+Das Kniffel-Plugin (`Kniffel/`) ist das produktionsreife Referenz-Plugin und demonstriert alle Context-API-Features:
+
+- `context.ws.broadcast` und `context.ws.sendTo` -- Spielzustand an alle oder einzelne Spieler senden
+- `context.ws.onMessage` -- Spielzuege empfangen und validieren
+- `context.stats.recordResult` -- Ergebnisse am Spielende melden
+- `context.lobby.getPlayers` und `context.lobby.setStatus` -- Lobby-Verwaltung
+- `context.lobby.onPlayerJoin` und `context.lobby.onPlayerLeave` -- Spieler-Lifecycle
+- `context.chat.sendSystem` -- Systemnachrichten im Chat
+
+Das Kniffel-Plugin zeigt ausserdem:
+
+- **Visuelle Wuerfel** mit CSS-Dot-Patterns und Roll-Animation
+- **Inline-Scoring** direkt im Scoreboard (klickbare Zellen in der eigenen Spalte)
+- **Style-Injection** mit `document.createElement('style')` fuer Plugin-spezifisches CSS
+- **`window.currentUserId`** zur Identifikation der eigenen Spalte
+- Vollstaendige Fehlerbehandlung mit `withErrorBoundary`-Pattern
+- Korrekte Socket-Listener-Bereinigung in `beforeUnmount()`
+
+Empfehlung: Das Kniffel-Plugin als Vorlage fuer neue Plugins verwenden. Das folgende Zahlenraten-Beispiel zeigt die minimale Grundstruktur.
+
 ### Zahlenraten -- Ein einfaches Multiplayer-Ratespiel
 
 Der Spielleiter denkt sich eine Zahl zwischen 1 und 100 aus, die anderen Spieler raten abwechselnd.
@@ -1592,7 +1636,7 @@ export default {
 
   methods: {
     eigeneUserId() {
-      return ''; // Wird vom Core nicht direkt bereitgestellt; alternativ aus dem State ablesen
+      return window.currentUserId || '';
     },
 
     zahlWaehlen() {

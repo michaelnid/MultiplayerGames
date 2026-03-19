@@ -113,6 +113,8 @@ export async function loadPluginBackend(
     await pluginModule.default(context, fastify);
   } else if (typeof pluginModule.register === 'function') {
     await pluginModule.register(context, fastify);
+  } else {
+    console.warn(`[${manifest.slug}] Plugin exportiert weder "default" noch "register" -- Backend wird nicht initialisiert.`);
   }
 
   loadedPlugins.set(manifest.slug, { context, manifest, dispatch });

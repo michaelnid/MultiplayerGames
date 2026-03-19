@@ -99,6 +99,8 @@ async function loadPluginFrontend() {
 
   try {
     (window as unknown as Record<string, unknown>).socket = ws.socket;
+    (window as unknown as Record<string, unknown>).currentUserId = auth.user?.id;
+    (window as unknown as Record<string, unknown>).lobbyId = props.lobbyId;
     const pluginUrl = `/plugins/${lobby.value.pluginSlug}/frontend/index.js?t=${Date.now()}`;
     const mod = await import(/* @vite-ignore */ pluginUrl);
     if (mod.default) {
@@ -166,6 +168,8 @@ onUnmounted(() => {
   ws.off(WS_EVENTS.LOBBY_PLAYER_LEFT);
   ws.off(WS_EVENTS.LOBBY_STATUS_CHANGED);
   delete (window as unknown as Record<string, unknown>).socket;
+  delete (window as unknown as Record<string, unknown>).currentUserId;
+  delete (window as unknown as Record<string, unknown>).lobbyId;
 });
 </script>
 
