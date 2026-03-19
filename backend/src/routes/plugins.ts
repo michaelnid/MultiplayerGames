@@ -28,7 +28,7 @@ export async function pluginRoutes(fastify: FastifyInstance) {
     };
   });
 
-  fastify.get('/active', { preHandler: requireAuth }, async () => {
+  fastify.get('/active', async () => {
     const plugins = await db('plugins').where('enabled', true).orderBy('name', 'asc');
     return {
       success: true,

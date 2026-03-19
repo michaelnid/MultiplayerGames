@@ -8,6 +8,10 @@
 
       <nav class="nav-main">
         <RouterLink to="/" class="nav-item" exact-active-class="active">
+          <BibliothekIcon />
+          <span>Home</span>
+        </RouterLink>
+        <RouterLink to="/dashboard" class="nav-item" active-class="active">
           <DashboardIcon />
           <span>Dashboard</span>
         </RouterLink>

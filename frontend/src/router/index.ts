@@ -12,18 +12,29 @@ export const router = createRouter({
     },
     {
       path: '/',
-      component: () => import('../layouts/MainLayout.vue'),
-      meta: { requiresAuth: true },
+      component: () => import('../layouts/PublicLayout.vue'),
       children: [
         {
           path: '',
-          name: 'dashboard',
-          component: () => import('../views/DashboardView.vue'),
+          name: 'home',
+          component: () => import('../views/HomeView.vue'),
         },
         {
           path: 'bibliothek',
           name: 'bibliothek',
           component: () => import('../views/BibliothekView.vue'),
+        },
+      ],
+    },
+    {
+      path: '/',
+      component: () => import('../layouts/MainLayout.vue'),
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: 'dashboard',
+          name: 'dashboard',
+          component: () => import('../views/DashboardView.vue'),
         },
         {
           path: 'multiplayer',
@@ -102,10 +113,10 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.guest && auth.isLoggedIn) {
-    return { name: 'dashboard' };
+    return { name: 'home' };
   }
 
   if (to.meta.requiresAdmin && !auth.isAdmin) {
-    return { name: 'dashboard' };
+    return { name: 'home' };
   }
 });
