@@ -91,7 +91,7 @@ export async function userRoutes(fastify: FastifyInstance) {
 
   fastify.put<{
     Params: { id: string };
-    Body: { role?: UserRole; password?: string };
+    Body: { role?: UserRole; password?: string; disable2fa?: boolean };
   }>('/:id', {
     preHandler: requireAdmin,
     schema: {
@@ -104,12 +104,13 @@ export async function userRoutes(fastify: FastifyInstance) {
         properties: {
           role: { type: 'string', enum: [...USER_ROLES] },
           password: { type: 'string', minLength: PASSWORD_MIN_LENGTH, maxLength: PASSWORD_MAX_LENGTH },
+          disable2fa: { type: 'boolean' },
         },
       },
     },
   }, async (request, reply) => {
     const { id } = request.params;
-    const { role, password } = request.body;
+    const { role, password, disable2fa } = request.body;
 
     const user = await db('users').where('id', id).first();
     if (!user) {
@@ -130,6 +131,14 @@ export async function userRoutes(fastify: FastifyInstance) {
     if (password) {
       updates.password_hash = await hashPassword(password);
       await logAudit(db, request.session.userId!, 'password_reset', {
+        targetUser: user.username,
+      });
+    }
+
+    if (disable2fa) {
+      updates.totp_enabled = false;
+      updates.totp_secret = null;
+      await logAudit(db, request.session.userId!, '2fa_disabled_by_admin', {
         targetUser: user.username,
       });
     }
