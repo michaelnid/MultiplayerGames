@@ -1,11 +1,13 @@
 import type { Server, Socket } from 'socket.io';
 import type { Knex } from 'knex';
 import { WS_EVENTS } from '@mike-games/shared';
+import { getPluginDispatch } from '../plugin-system/loader.js';
 
 interface SocketData {
   userId?: string;
   username?: string;
   currentLobby?: string;
+  currentPluginId?: string;
 }
 
 export function setupWebSocket(io: Server, db: Knex) {
@@ -44,12 +46,18 @@ export function setupWebSocket(io: Server, db: Knex) {
       }
 
       data.currentLobby = lobby.id;
+      data.currentPluginId = lobby.plugin_id;
       socket.join(`lobby:${lobby.id}`);
 
       io.to(`lobby:${lobby.id}`).emit(WS_EVENTS.LOBBY_PLAYER_JOINED, {
         userId: data.userId,
         username: data.username,
       });
+
+      const dispatch = getPluginDispatch(lobby.plugin_id);
+      if (dispatch) {
+        dispatch.playerJoin(data.userId, lobby.id);
+      }
     });
 
     socket.on(WS_EVENTS.LOBBY_LEAVE, () => {
@@ -60,8 +68,16 @@ export function setupWebSocket(io: Server, db: Knex) {
         username: data.username,
       });
 
+      if (data.currentPluginId) {
+        const dispatch = getPluginDispatch(data.currentPluginId);
+        if (dispatch) {
+          dispatch.playerLeave(data.userId, data.currentLobby);
+        }
+      }
+
       socket.leave(`lobby:${data.currentLobby}`);
       data.currentLobby = undefined;
+      data.currentPluginId = undefined;
     });
 
     socket.on(WS_EVENTS.CHAT_MESSAGE, (payload: { message: string }) => {
@@ -80,12 +96,20 @@ export function setupWebSocket(io: Server, db: Knex) {
 
     socket.on(WS_EVENTS.GAME_EVENT, (payload: { event: string; data: unknown }) => {
       if (!data.userId || !data.currentLobby) return;
+      if (!payload.event || typeof payload.event !== 'string') return;
 
       io.to(`lobby:${data.currentLobby}`).emit(WS_EVENTS.GAME_EVENT, {
         userId: data.userId,
         event: payload.event,
         data: payload.data,
       });
+
+      if (data.currentPluginId) {
+        const dispatch = getPluginDispatch(data.currentPluginId);
+        if (dispatch) {
+          dispatch.message(payload.event, payload.data, data.userId, data.currentLobby);
+        }
+      }
     });
 
     socket.on('disconnect', () => {
@@ -94,6 +118,13 @@ export function setupWebSocket(io: Server, db: Knex) {
           userId: data.userId,
           username: data.username,
         });
+
+        if (data.currentPluginId && data.userId) {
+          const dispatch = getPluginDispatch(data.currentPluginId);
+          if (dispatch) {
+            dispatch.playerLeave(data.userId, data.currentLobby);
+          }
+        }
       }
     });
   });

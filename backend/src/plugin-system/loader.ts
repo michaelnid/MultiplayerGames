@@ -7,13 +7,24 @@ import type { FastifyInstance } from 'fastify';
 import type { PluginManifest } from '@mike-games/shared';
 import { MAX_PLUGIN_SIZE_BYTES } from '@mike-games/shared';
 import { validateManifest } from './manifest.js';
-import { createPluginContext, type PluginContext } from './context.js';
+import { createPluginContext, type PluginContext, type PluginDispatch } from './context.js';
 import { config } from '../config.js';
 
-const loadedPlugins = new Map<string, { context: PluginContext; manifest: PluginManifest }>();
+interface LoadedPlugin {
+  context: PluginContext;
+  manifest: PluginManifest;
+  dispatch: PluginDispatch;
+}
+
+const loadedPlugins = new Map<string, LoadedPlugin>();
+const dispatchByPluginId = new Map<string, PluginDispatch>();
 
 export function getLoadedPlugins() {
   return loadedPlugins;
+}
+
+export function getPluginDispatch(pluginId: string): PluginDispatch | undefined {
+  return dispatchByPluginId.get(pluginId);
 }
 
 export async function installPlugin(
@@ -73,7 +84,6 @@ export async function installPlugin(
   try {
     await loadPluginBackend(plugin.id, manifest, pluginDir, db, io, fastify);
   } catch (err) {
-    // Backend-Laden fehlgeschlagen, aber Plugin ist installiert (deaktiviert)
     await db('plugins').where('id', plugin.id).update({ enabled: false });
   }
 
@@ -96,7 +106,7 @@ export async function loadPluginBackend(
     throw new Error(`Backend-Einstiegspunkt nicht gefunden: ${manifest.backend.entry}`);
   }
 
-  const context = createPluginContext(manifest.slug, pluginId, db, io);
+  const { context, dispatch } = createPluginContext(manifest.slug, pluginId, db, io);
 
   const pluginModule = await import(backendEntry);
   if (typeof pluginModule.default === 'function') {
@@ -105,7 +115,13 @@ export async function loadPluginBackend(
     await pluginModule.register(context, fastify);
   }
 
-  loadedPlugins.set(manifest.slug, { context, manifest });
+  loadedPlugins.set(manifest.slug, { context, manifest, dispatch });
+  dispatchByPluginId.set(pluginId, dispatch);
+}
+
+export function unloadPlugin(slug: string, pluginId: string) {
+  loadedPlugins.delete(slug);
+  dispatchByPluginId.delete(pluginId);
 }
 
 export async function uninstallPlugin(pluginId: string, db: Knex) {
@@ -114,7 +130,7 @@ export async function uninstallPlugin(pluginId: string, db: Knex) {
     throw new Error('Plugin nicht gefunden');
   }
 
-  loadedPlugins.delete(plugin.slug);
+  unloadPlugin(plugin.slug, pluginId);
 
   await db('plugin_settings').where('plugin_id', pluginId).delete();
   await db('player_stats').where('plugin_id', pluginId).delete();

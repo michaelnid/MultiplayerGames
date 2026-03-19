@@ -2,7 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { db } from '../db/knex.js';
 import { requireAdmin, requireAuth } from '../auth/middleware.js';
 import { logAudit } from '../auth/audit.js';
-import { installPlugin, uninstallPlugin, getLoadedPlugins } from '../plugin-system/loader.js';
+import { installPlugin, uninstallPlugin, loadPluginBackend, unloadPlugin, getLoadedPlugins } from '../plugin-system/loader.js';
+import { config } from '../config.js';
+import path from 'node:path';
 
 let ioRef: any = null;
 
@@ -88,6 +90,20 @@ export async function pluginRoutes(fastify: FastifyInstance) {
 
     if (typeof enabled === 'boolean') {
       await db('plugins').where('id', id).update({ enabled });
+
+      if (enabled && !getLoadedPlugins().has(plugin.slug)) {
+        try {
+          const manifest = typeof plugin.manifest === 'string' ? JSON.parse(plugin.manifest) : plugin.manifest;
+          const pluginDir = path.join(config.plugins.directory, plugin.slug);
+          await loadPluginBackend(id, manifest, pluginDir, db, ioRef, fastify);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Laden fehlgeschlagen';
+          return reply.status(500).send({ success: false, error: `Plugin aktiviert, aber Laden fehlgeschlagen: ${msg}` });
+        }
+      } else if (!enabled && getLoadedPlugins().has(plugin.slug)) {
+        unloadPlugin(plugin.slug, id);
+      }
+
       await logAudit(db, request.session.userId!, enabled ? 'plugin_enabled' : 'plugin_disabled', {
         slug: plugin.slug,
       });

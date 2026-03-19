@@ -40,17 +40,28 @@ export interface PluginContext {
   };
 }
 
+export interface PluginDispatch {
+  message: (event: string, data: unknown, userId: string, lobbyId: string) => void;
+  playerJoin: (userId: string, lobbyId: string) => void;
+  playerLeave: (userId: string, lobbyId: string) => void;
+}
+
+export interface PluginContextResult {
+  context: PluginContext;
+  dispatch: PluginDispatch;
+}
+
 export function createPluginContext(
   slug: string,
   pluginId: string,
   db: Knex,
   io: Server,
-): PluginContext {
+): PluginContextResult {
   const eventHandlers = new Map<string, ((data: unknown, userId: string, lobbyId: string) => void)[]>();
   const joinHandlers: ((userId: string, lobbyId: string) => void)[] = [];
   const leaveHandlers: ((userId: string, lobbyId: string) => void)[] = [];
 
-  return {
+  const context: PluginContext = {
     slug,
     pluginId,
 
@@ -58,7 +69,7 @@ export function createPluginContext(
       broadcast(lobbyId, event, data) {
         io.to(`lobby:${lobbyId}`).emit(`plugin:${slug}:${event}`, data);
       },
-      sendTo(lobbyId, userId, event, data) {
+      sendTo(_lobbyId, userId, event, data) {
         io.to(`user:${userId}`).emit(`plugin:${slug}:${event}`, data);
       },
       onMessage(event, handler) {
@@ -103,7 +114,7 @@ export function createPluginContext(
 
       async getLeaderboard(options = {}) {
         const limit = options.limit || 10;
-        let query = db('player_stats')
+        const query = db('player_stats')
           .where('plugin_id', pluginId)
           .join('users', 'player_stats.user_id', 'users.id')
           .select(
@@ -118,13 +129,20 @@ export function createPluginContext(
           .orderBy('player_stats.total_score', 'desc')
           .limit(limit);
 
+        if (options.period === 'woche') {
+          query.where('player_stats.last_played', '>=', db.raw("NOW() - INTERVAL '7 days'"));
+        } else if (options.period === 'monat') {
+          query.where('player_stats.last_played', '>=', db.raw("NOW() - INTERVAL '30 days'"));
+        }
+
         return query;
       },
 
       async getPlayerStats(userId) {
-        return db('player_stats')
+        const row = await db('player_stats')
           .where({ user_id: userId, plugin_id: pluginId })
           .first();
+        return row ?? null;
       },
     },
 
@@ -235,4 +253,37 @@ export function createPluginContext(
       },
     },
   };
+
+  const dispatch: PluginDispatch = {
+    message(event, data, userId, lobbyId) {
+      const handlers = eventHandlers.get(event) || [];
+      for (const handler of handlers) {
+        try {
+          handler(data, userId, lobbyId);
+        } catch (err) {
+          console.error(`[${slug}] Fehler in Event-Handler "${event}":`, err);
+        }
+      }
+    },
+    playerJoin(userId, lobbyId) {
+      for (const handler of joinHandlers) {
+        try {
+          handler(userId, lobbyId);
+        } catch (err) {
+          console.error(`[${slug}] Fehler in onPlayerJoin-Handler:`, err);
+        }
+      }
+    },
+    playerLeave(userId, lobbyId) {
+      for (const handler of leaveHandlers) {
+        try {
+          handler(userId, lobbyId);
+        } catch (err) {
+          console.error(`[${slug}] Fehler in onPlayerLeave-Handler:`, err);
+        }
+      }
+    },
+  };
+
+  return { context, dispatch };
 }
