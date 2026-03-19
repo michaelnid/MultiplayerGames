@@ -109,6 +109,7 @@ mein-spiel/
 | `maxPlayers` | `number` | >= minPlayers | Maximale Spielerzahl pro Lobby |
 | `frontend.entry` | `string` | Gueltiger Dateipfad | Relativer Pfad zur Frontend-Komponente |
 | `backend.entry` | `string` | Gueltiger Dateipfad | Relativer Pfad zum Backend-Modul |
+| `icon` | `string` | Pfad auf `.svg` im Plugin | Pflicht-Icon fuer Bibliothek, Lobby und Profil (SVG, idealerweise quadratisch, mind. 128x128px). |
 
 ### Optionale Felder
 
@@ -116,7 +117,6 @@ mein-spiel/
 |------|-----|---------|-------------|
 | `author` | `string` | `""` | Autor oder Team |
 | `coreVersion` | `string` | Keine Pruefung | Benoetigte Core-Version als SemVer-Range (z.B. `>=1.0.0`, `^1.2.0`) |
-| `icon` | `string` | Keins | Relativer Pfad zum Plugin-Icon (SVG empfohlen) |
 | `frontend.bibliothek.title` | `string` | `name` | Titel in der Bibliothek |
 | `frontend.bibliothek.description` | `string` | `description` | Beschreibungstext in der Bibliothek |
 | `frontend.bibliothek.coverImage` | `string` | Keins | Relativer Pfad zum Cover-Bild |
@@ -135,6 +135,21 @@ Die Bibliothek zeigt jedes Plugin als anklickbare Kachel. Beim Klick wird eine D
 3. Falls `frontend.bibliothek.description` fehlt, faellt der Core auf `description` zurueck. Das ist nur ein Fallback und fuer produktive Plugins nicht ausreichend.
 
 Empfohlene Laenge fuer `frontend.bibliothek.description`: 300-1200 Zeichen.
+
+### Icon- und Cover-Anforderungen
+
+- `icon` **muss** auf eine SVG-Datei innerhalb des Plugin-ZIPs zeigen, z.B. `frontend/assets/icon.svg`.
+- Das Icon wird
+  - in der Startseite,
+  - in der Spielebibliothek (Kacheln und Detailansicht) und
+  - spaeter in Profil/Statistik-Ansichten
+  verwendet.
+- SVG sollte:
+  - quadratisch sein (z.B. 128x128 oder 256x256),
+  - keinen externen Font- oder Bild-Referenzen enthalten,
+  - keine externen URLs oder Scripts enthalten.
+
+Optional kann `frontend.bibliothek.coverImage` (PNG/JPG) gesetzt werden. Dieses Bild wird gross in der Detailansicht der Bibliothek angezeigt.
 
 ### Validierung bei Installation
 

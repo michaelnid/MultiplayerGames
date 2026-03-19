@@ -45,31 +45,40 @@
 
     <div v-if="selectedPlugin" class="detail-overlay" @click.self="closeDetails">
       <div class="detail-card card">
-        <div class="detail-header">
-          <div class="detail-icon" :style="{ '--accent': selectedAccent }">
-            <img
-              v-if="selectedPlugin.manifest?.icon"
-              :src="`/plugins/${selectedPlugin.slug}/${selectedPlugin.manifest.icon}`"
-              :alt="selectedPlugin.name"
-              class="detail-icon-img"
-            />
-            <span v-else class="detail-icon-letter">{{ selectedPlugin.name.charAt(0) }}</span>
+        <div class="detail-main">
+          <div class="detail-media">
+            <div class="detail-cover-wrapper">
+              <img
+                v-if="selectedPlugin.manifest?.frontend?.bibliothek?.coverImage"
+                :src="`/plugins/${selectedPlugin.slug}/${selectedPlugin.manifest.frontend.bibliothek.coverImage}`"
+                :alt="selectedPlugin.name"
+                class="detail-cover-img"
+              />
+              <div v-else class="detail-icon-large" :style="{ '--accent': selectedAccent }">
+                <img
+                  v-if="selectedPlugin.manifest?.icon"
+                  :src="`/plugins/${selectedPlugin.slug}/${selectedPlugin.manifest.icon}`"
+                  :alt="selectedPlugin.name"
+                  class="detail-icon-img"
+                />
+                <span v-else class="detail-icon-letter">{{ selectedPlugin.name.charAt(0) }}</span>
+              </div>
+            </div>
+
+            <ul class="detail-meta">
+              <li><strong>Spieler:</strong> {{ selectedPlugin.manifest?.minPlayers }}–{{ selectedPlugin.manifest?.maxPlayers }}</li>
+              <li><strong>Version:</strong> v{{ selectedPlugin.version }}</li>
+              <li v-if="selectedPlugin.manifest?.author"><strong>Autor:</strong> {{ selectedPlugin.manifest.author }}</li>
+            </ul>
           </div>
-          <div>
-            <h2>{{ selectedPlugin.name }}</h2>
+
+          <div class="detail-body">
+            <h2 class="detail-title">{{ selectedPlugin.name }}</h2>
             <p class="detail-sub">{{ shortDescription(selectedPlugin) }}</p>
+
+            <h3>Spielerklaerung</h3>
+            <p class="detail-text">{{ fullDescription(selectedPlugin) }}</p>
           </div>
-        </div>
-
-        <div class="detail-body">
-          <h3>Spielerklaerung</h3>
-          <p class="detail-text">{{ fullDescription(selectedPlugin) }}</p>
-
-          <ul class="detail-meta">
-            <li><strong>Spieler:</strong> {{ selectedPlugin.manifest?.minPlayers }}–{{ selectedPlugin.manifest?.maxPlayers }}</li>
-            <li><strong>Version:</strong> v{{ selectedPlugin.version }}</li>
-            <li v-if="selectedPlugin.manifest?.author"><strong>Autor:</strong> {{ selectedPlugin.manifest.author }}</li>
-          </ul>
         </div>
 
         <div class="detail-actions">
@@ -292,7 +301,14 @@ onMounted(async () => {
   margin-bottom: 1rem;
 }
 
-.detail-icon {
+.detail-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr);
+  gap: 1.5rem;
+}
+
+.detail-icon,
+.detail-icon-large {
   width: 62px;
   height: 62px;
   border-radius: 20px;
@@ -319,6 +335,10 @@ onMounted(async () => {
   color: var(--color-text-muted);
 }
 
+.detail-title {
+  margin-bottom: 0.4rem;
+}
+
 .detail-body h3 {
   margin-bottom: 0.4rem;
 }
@@ -331,10 +351,7 @@ onMounted(async () => {
 .detail-meta {
   list-style: none;
   padding: 0;
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
+  margin: 0.5rem 0 0;
   color: var(--color-text-muted);
   font-size: 0.85rem;
 }
@@ -372,6 +389,10 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
+  .detail-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .detail-actions {
     flex-direction: column;
   }
