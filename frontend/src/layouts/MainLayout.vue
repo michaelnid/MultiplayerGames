@@ -1,49 +1,31 @@
 <template>
-  <div class="layout">
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <h2 class="logo">MIKE</h2>
-        <span class="logo-sub">Multiplayer Games</span>
+  <div class="app-layout">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <RouterLink to="/" class="topbar-brand">
+          <span class="brand-icon">M</span>
+          <span class="brand-text">
+            <small>MIKE</small>
+            Game Library
+          </span>
+        </RouterLink>
+
+        <nav class="topbar-nav">
+          <RouterLink to="/" class="nav-link" exact-active-class="active">Home</RouterLink>
+          <RouterLink to="/dashboard" class="nav-link" active-class="active">Dashboard</RouterLink>
+          <RouterLink to="/bibliothek" class="nav-link" active-class="active">Bibliothek</RouterLink>
+          <RouterLink to="/multiplayer" class="nav-link" active-class="active">Multiplayer</RouterLink>
+        </nav>
+
+        <div class="topbar-actions">
+          <RouterLink v-if="auth.isAdmin" to="/admin" class="nav-link" active-class="active">Admin</RouterLink>
+          <RouterLink to="/profil" class="nav-link" active-class="active">{{ auth.user?.username }}</RouterLink>
+          <button class="btn-logout" @click="handleLogout">Abmelden</button>
+        </div>
       </div>
+    </header>
 
-      <nav class="nav-main">
-        <RouterLink to="/" class="nav-item" exact-active-class="active">
-          <BibliothekIcon />
-          <span>Home</span>
-        </RouterLink>
-        <RouterLink to="/dashboard" class="nav-item" active-class="active">
-          <DashboardIcon />
-          <span>Dashboard</span>
-        </RouterLink>
-        <RouterLink to="/bibliothek" class="nav-item" active-class="active">
-          <BibliothekIcon />
-          <span>Bibliothek</span>
-        </RouterLink>
-        <RouterLink to="/multiplayer" class="nav-item" active-class="active">
-          <MultiplayerIcon />
-          <span>Multiplayer</span>
-        </RouterLink>
-      </nav>
-
-      <div class="nav-spacer"></div>
-
-      <nav class="nav-bottom">
-        <RouterLink v-if="auth.isAdmin" to="/admin" class="nav-item" active-class="active">
-          <AdminIcon />
-          <span>Admin</span>
-        </RouterLink>
-        <RouterLink to="/profil" class="nav-item" active-class="active">
-          <ProfilIcon />
-          <span>{{ auth.user?.username }}</span>
-        </RouterLink>
-        <button class="nav-item logout-btn" @click="handleLogout">
-          <LogoutIcon />
-          <span>Abmelden</span>
-        </button>
-      </nav>
-    </aside>
-
-    <main class="content">
+    <main class="main-content">
       <RouterView />
     </main>
   </div>
@@ -52,120 +34,158 @@
 <script setup lang="ts">
 import { RouterLink, RouterView, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth.js';
-import DashboardIcon from '../components/icons/DashboardIcon.vue';
-import BibliothekIcon from '../components/icons/BibliothekIcon.vue';
-import MultiplayerIcon from '../components/icons/MultiplayerIcon.vue';
-import AdminIcon from '../components/icons/AdminIcon.vue';
-import ProfilIcon from '../components/icons/ProfilIcon.vue';
-import LogoutIcon from '../components/icons/LogoutIcon.vue';
 
 const auth = useAuthStore();
 const router = useRouter();
 
 async function handleLogout() {
   await auth.logout();
-  router.push('/login');
+  router.push('/');
 }
 </script>
 
 <style scoped>
-.layout {
-  display: flex;
+.app-layout {
   min-height: 100vh;
-}
-
-.sidebar {
-  width: 240px;
-  background-color: var(--color-bg-secondary);
-  border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  padding: 1rem 0;
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  z-index: 100;
 }
 
-.sidebar-header {
-  padding: 0.5rem 1.25rem 1.5rem;
+.topbar {
   border-bottom: 1px solid var(--color-border);
-  margin-bottom: 0.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  background-color: rgba(26, 29, 39, 0.9);
 }
 
-.logo {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--color-primary);
-  letter-spacing: 2px;
+.topbar-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
 }
 
-.logo-sub {
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 1px;
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-decoration: none;
+  color: var(--color-text);
+  flex-shrink: 0;
 }
 
-.nav-main,
-.nav-bottom {
+.brand-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--color-primary), #8b5cf6);
+  color: white;
+  font-weight: 800;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 0.25rem 0.75rem;
+  line-height: 1.15;
+  font-weight: 700;
+  font-size: 0.95rem;
 }
 
-.nav-spacer {
+.brand-text small {
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.topbar-nav {
+  display: flex;
+  gap: 0.25rem;
   flex: 1;
 }
 
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
+.nav-link {
+  padding: 0.45rem 0.85rem;
   border-radius: var(--radius);
   color: var(--color-text-muted);
   font-size: 0.875rem;
   font-weight: 500;
-  transition: all var(--transition);
   text-decoration: none;
-  border: none;
-  background: none;
-  cursor: pointer;
-  width: 100%;
-  text-align: left;
+  transition: all var(--transition);
 }
 
-.nav-item:hover {
+.nav-link:hover {
   color: var(--color-text);
   background-color: var(--color-bg-hover);
 }
 
-.nav-item.active {
+.nav-link.active {
   color: var(--color-primary);
   background-color: rgba(99, 102, 241, 0.1);
 }
 
-.nav-bottom {
-  border-top: 1px solid var(--color-border);
-  padding-top: 0.5rem;
-  margin-top: 0.5rem;
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
-.logout-btn {
+.btn-logout {
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius);
+  background: none;
+  border: 1px solid var(--color-border);
   color: var(--color-text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--transition);
 }
 
-.logout-btn:hover {
+.btn-logout:hover {
   color: var(--color-danger);
+  border-color: var(--color-danger);
 }
 
-.content {
+.main-content {
   flex: 1;
-  margin-left: 240px;
-  padding: 2rem;
-  min-height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .topbar-inner {
+    padding: 0 1rem;
+    gap: 1rem;
+  }
+
+  .topbar-nav {
+    gap: 0;
+  }
+
+  .nav-link {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .brand-text {
+    display: none;
+  }
+
+  .main-content {
+    padding: 1.5rem 1rem;
+  }
 }
 </style>
