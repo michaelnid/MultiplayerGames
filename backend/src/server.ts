@@ -13,7 +13,7 @@ import { config } from './config.js';
 import { db } from './db/knex.js';
 import { authRoutes } from './routes/auth.js';
 import { userRoutes } from './routes/users.js';
-import { lobbyRoutes } from './routes/lobbies.js';
+import { lobbyRoutes, setLobbyIO } from './routes/lobbies.js';
 import { pluginRoutes, setPluginIO } from './routes/plugins.js';
 import { statsRoutes } from './routes/stats.js';
 import { setupWebSocket } from './ws/index.js';
@@ -104,6 +104,7 @@ async function start() {
   });
 
   setPluginIO(io);
+  setLobbyIO(io);
   setupWebSocket(io, db);
 
   try {

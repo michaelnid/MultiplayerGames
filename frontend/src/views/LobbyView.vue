@@ -154,7 +154,6 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  ws.emit(WS_EVENTS.LOBBY_LEAVE);
   ws.off('auth:ok');
   ws.off(WS_EVENTS.LOBBY_PLAYER_JOINED);
   ws.off(WS_EVENTS.LOBBY_PLAYER_LEFT);

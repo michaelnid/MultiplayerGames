@@ -1,7 +1,14 @@
 import type { FastifyInstance } from 'fastify';
+import type { Server } from 'socket.io';
 import { db } from '../db/knex.js';
 import { requireAuth, requireGameMasterOrAdmin } from '../auth/middleware.js';
 import { generateLobbyCode } from '../lobby/code-generator.js';
+
+let io: Server | null = null;
+
+export function setLobbyIO(ioInstance: Server) {
+  io = ioInstance;
+}
 
 export async function lobbyRoutes(fastify: FastifyInstance) {
   fastify.get('/', { preHandler: requireAuth }, async () => {
@@ -229,6 +236,13 @@ export async function lobbyRoutes(fastify: FastifyInstance) {
     }
 
     await db('lobbies').where('id', lobby.id).update({ status: 'laeuft' });
+
+    if (io) {
+      io.to(`lobby:${lobby.id}`).emit('lobby:status-changed', {
+        lobbyId: lobby.id,
+        status: 'laeuft',
+      });
+    }
 
     const [gameSession] = await db('game_sessions')
       .insert({

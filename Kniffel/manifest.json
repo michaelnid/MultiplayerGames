@@ -1,0 +1,20 @@
+{
+  "slug": "kniffel",
+  "name": "Kniffel",
+  "version": "1.0.1",
+  "author": "MIKE Team",
+  "description": "Klassisches Kniffel fuer 2 bis 4 Spieler.",
+  "minPlayers": 2,
+  "maxPlayers": 4,
+  "coreVersion": ">=1.0.0",
+  "frontend": {
+    "entry": "frontend/index.js",
+    "bibliothek": {
+      "title": "Kniffel",
+      "description": "Wuerfle bis zu drei Mal pro Zug und trage dein Ergebnis strategisch in die passenden Kategorien ein."
+    }
+  },
+  "backend": {
+    "entry": "backend/index.js"
+  }
+}

@@ -119,13 +119,6 @@ export function setupWebSocket(io: Server, db: Knex) {
           userId: data.userId,
           username: data.username,
         });
-
-        if (data.currentPluginId && data.userId) {
-          const dispatch = getPluginDispatch(data.currentPluginId);
-          if (dispatch) {
-            dispatch.playerLeave(data.userId, data.currentLobby);
-          }
-        }
       }
     });
   });
