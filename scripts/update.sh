@@ -153,7 +153,20 @@ chown "$PGADMIN_SERVICE_USER:$PGADMIN_SERVICE_USER" "$PGADMIN_DIR/run-gunicorn.s
 mkdir -p "$PGADMIN_DATA_DIR/sessions" "$PGADMIN_DATA_DIR/storage"
 chown -R "$PGADMIN_SERVICE_USER:$PGADMIN_SERVICE_USER" "$PGADMIN_DATA_DIR"
 
+PGADMIN_BOOTSTRAP_USER=0
 if [ ! -f "$PGADMIN_DATA_DIR/pgadmin4.db" ]; then
+  PGADMIN_BOOTSTRAP_USER=1
+fi
+
+run_as_pgadmin "PGADMIN_CONFIG_SERVER_MODE=True \
+PGADMIN_CONFIG_DATA_DIR='$PGADMIN_DATA_DIR' \
+PGADMIN_CONFIG_LOG_FILE='$PGADMIN_LOG_DIR/pgadmin4.log' \
+PGADMIN_CONFIG_SQLITE_PATH='$PGADMIN_DATA_DIR/pgadmin4.db' \
+PGADMIN_CONFIG_SESSION_DB_PATH='$PGADMIN_DATA_DIR/sessions' \
+PGADMIN_CONFIG_STORAGE_DIR='$PGADMIN_DATA_DIR/storage' \
+'$PGADMIN_DIR/venv/bin/python' '$PGADMIN_APP_DIR/setup.py' setup-db > /dev/null 2>&1" || fail "pgAdmin-Konfigurationsdatenbank konnte nicht erstellt werden."
+
+if [ "$PGADMIN_BOOTSTRAP_USER" -eq 1 ]; then
   PGADMIN_ADMIN_EMAIL="admin@localhost.local"
   if [ -n "$DOMAIN" ]; then
     PGADMIN_ADMIN_EMAIL="admin@$DOMAIN"

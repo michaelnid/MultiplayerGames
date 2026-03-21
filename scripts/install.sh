@@ -264,6 +264,14 @@ PGADMIN_CONFIG_LOG_FILE='$PGADMIN_LOG_DIR/pgadmin4.log' \
 PGADMIN_CONFIG_SQLITE_PATH='$PGADMIN_DATA_DIR/pgadmin4.db' \
 PGADMIN_CONFIG_SESSION_DB_PATH='$PGADMIN_DATA_DIR/sessions' \
 PGADMIN_CONFIG_STORAGE_DIR='$PGADMIN_DATA_DIR/storage' \
+'$PGADMIN_DIR/venv/bin/python' '$PGADMIN_APP_DIR/setup.py' setup-db > /dev/null 2>&1" || fail "pgAdmin-Konfigurationsdatenbank konnte nicht erstellt werden."
+
+run_as_pgadmin "PGADMIN_CONFIG_SERVER_MODE=True \
+PGADMIN_CONFIG_DATA_DIR='$PGADMIN_DATA_DIR' \
+PGADMIN_CONFIG_LOG_FILE='$PGADMIN_LOG_DIR/pgadmin4.log' \
+PGADMIN_CONFIG_SQLITE_PATH='$PGADMIN_DATA_DIR/pgadmin4.db' \
+PGADMIN_CONFIG_SESSION_DB_PATH='$PGADMIN_DATA_DIR/sessions' \
+PGADMIN_CONFIG_STORAGE_DIR='$PGADMIN_DATA_DIR/storage' \
 '$PGADMIN_DIR/venv/bin/python' '$PGADMIN_APP_DIR/setup.py' add-user '$PGADMIN_ADMIN_EMAIL' '$PGADMIN_ADMIN_PASSWORD' --admin > /dev/null 2>&1"
 
 cat > "/etc/systemd/system/${PGADMIN_SERVICE_NAME}.service" << EOF
