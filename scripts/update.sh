@@ -13,11 +13,13 @@ PGADMIN_SOCKET_DIR="/run/mike-pgadmin4"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
 info() { echo -e "${CYAN}[INFO]${NC} $1"; }
 success() { echo -e "${GREEN}[OK]${NC} $1"; }
+warn() { echo -e "${YELLOW}[WARNUNG]${NC} $1"; }
 fail() { echo -e "${RED}[FEHLER]${NC} $1"; exit 1; }
 
 run_as_service() {
@@ -153,40 +155,7 @@ chown "$PGADMIN_SERVICE_USER:$PGADMIN_SERVICE_USER" "$PGADMIN_DIR/run-gunicorn.s
 mkdir -p "$PGADMIN_DATA_DIR/sessions" "$PGADMIN_DATA_DIR/storage"
 chown -R "$PGADMIN_SERVICE_USER:$PGADMIN_SERVICE_USER" "$PGADMIN_DATA_DIR"
 
-PGADMIN_BOOTSTRAP_USER=0
-if [ ! -f "$PGADMIN_DATA_DIR/pgadmin4.db" ]; then
-  PGADMIN_BOOTSTRAP_USER=1
-fi
-
-run_as_pgadmin "PGADMIN_CONFIG_SERVER_MODE=True \
-PGADMIN_CONFIG_DATA_DIR='$PGADMIN_DATA_DIR' \
-PGADMIN_CONFIG_LOG_FILE='$PGADMIN_LOG_DIR/pgadmin4.log' \
-PGADMIN_CONFIG_SQLITE_PATH='$PGADMIN_DATA_DIR/pgadmin4.db' \
-PGADMIN_CONFIG_SESSION_DB_PATH='$PGADMIN_DATA_DIR/sessions' \
-PGADMIN_CONFIG_STORAGE_DIR='$PGADMIN_DATA_DIR/storage' \
-'$PGADMIN_DIR/venv/bin/python' '$PGADMIN_APP_DIR/setup.py' setup-db > /dev/null 2>&1" || fail "pgAdmin-Konfigurationsdatenbank konnte nicht erstellt werden."
-
-if [ "$PGADMIN_BOOTSTRAP_USER" -eq 1 ]; then
-  PGADMIN_ADMIN_EMAIL="admin@localhost.local"
-  if [ -n "$DOMAIN" ]; then
-    PGADMIN_ADMIN_EMAIL="admin@$DOMAIN"
-  fi
-  PGADMIN_ADMIN_PASSWORD=$(openssl rand -base64 20 | tr -dc 'a-zA-Z0-9' | head -c 20)
-  run_as_pgadmin "PGADMIN_CONFIG_SERVER_MODE=True \
-PGADMIN_CONFIG_DATA_DIR='$PGADMIN_DATA_DIR' \
-PGADMIN_CONFIG_LOG_FILE='$PGADMIN_LOG_DIR/pgadmin4.log' \
-PGADMIN_CONFIG_SQLITE_PATH='$PGADMIN_DATA_DIR/pgadmin4.db' \
-PGADMIN_CONFIG_SESSION_DB_PATH='$PGADMIN_DATA_DIR/sessions' \
-PGADMIN_CONFIG_STORAGE_DIR='$PGADMIN_DATA_DIR/storage' \
-'$PGADMIN_DIR/venv/bin/python' '$PGADMIN_APP_DIR/setup.py' add-user '$PGADMIN_ADMIN_EMAIL' '$PGADMIN_ADMIN_PASSWORD' --admin > /dev/null 2>&1" || fail "pgAdmin-Benutzer konnte nicht initialisiert werden."
-  success "pgAdmin-Benutzer initialisiert"
-  echo ""
-  echo "  Neuer pgAdmin-Benutzer (nur bei erstem Setup):"
-  echo "    Benutzername: $PGADMIN_ADMIN_EMAIL"
-  echo "    Passwort:     $PGADMIN_ADMIN_PASSWORD"
-  echo ""
-fi
-
+# Service-Datei IMMER erstellen, unabhängig vom Erfolg des DB-Setups
 cat > "/etc/systemd/system/${PGADMIN_SERVICE_NAME}.service" << EOF
 [Unit]
 Description=MIKE pgAdmin 4
@@ -213,6 +182,51 @@ Environment=PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION=True
 [Install]
 WantedBy=multi-user.target
 EOF
+
+# Bootstrap-Prüfung VOR setup-db, da setup-db die Datei erst erstellt
+PGADMIN_BOOTSTRAP_USER=0
+if [ ! -f "$PGADMIN_DATA_DIR/pgadmin4.db" ]; then
+  PGADMIN_BOOTSTRAP_USER=1
+fi
+
+PGADMIN_SETUP_OK=1
+if ! run_as_pgadmin "PGADMIN_CONFIG_SERVER_MODE=True \
+PGADMIN_CONFIG_DATA_DIR='$PGADMIN_DATA_DIR' \
+PGADMIN_CONFIG_LOG_FILE='$PGADMIN_LOG_DIR/pgadmin4.log' \
+PGADMIN_CONFIG_SQLITE_PATH='$PGADMIN_DATA_DIR/pgadmin4.db' \
+PGADMIN_CONFIG_SESSION_DB_PATH='$PGADMIN_DATA_DIR/sessions' \
+PGADMIN_CONFIG_STORAGE_DIR='$PGADMIN_DATA_DIR/storage' \
+'$PGADMIN_DIR/venv/bin/python' '$PGADMIN_APP_DIR/setup.py' setup-db 2>&1"; then
+  warn "pgAdmin-Konfigurationsdatenbank konnte nicht erstellt/aktualisiert werden."
+  PGADMIN_SETUP_OK=0
+fi
+
+if [ "$PGADMIN_BOOTSTRAP_USER" -eq 1 ] && [ "$PGADMIN_SETUP_OK" -eq 1 ]; then
+  PGADMIN_ADMIN_EMAIL="admin@localhost.local"
+  if [ -n "$DOMAIN" ]; then
+    PGADMIN_ADMIN_EMAIL="admin@$DOMAIN"
+  fi
+  PGADMIN_ADMIN_PASSWORD=$(openssl rand -base64 20 | tr -dc 'a-zA-Z0-9' | head -c 20)
+  if run_as_pgadmin "PGADMIN_CONFIG_SERVER_MODE=True \
+PGADMIN_CONFIG_DATA_DIR='$PGADMIN_DATA_DIR' \
+PGADMIN_CONFIG_LOG_FILE='$PGADMIN_LOG_DIR/pgadmin4.log' \
+PGADMIN_CONFIG_SQLITE_PATH='$PGADMIN_DATA_DIR/pgadmin4.db' \
+PGADMIN_CONFIG_SESSION_DB_PATH='$PGADMIN_DATA_DIR/sessions' \
+PGADMIN_CONFIG_STORAGE_DIR='$PGADMIN_DATA_DIR/storage' \
+'$PGADMIN_DIR/venv/bin/python' '$PGADMIN_APP_DIR/setup.py' add-user '$PGADMIN_ADMIN_EMAIL' '$PGADMIN_ADMIN_PASSWORD' --admin 2>&1"; then
+    success "pgAdmin-Benutzer initialisiert"
+    echo ""
+    echo "  Neuer pgAdmin-Benutzer (nur bei erstem Setup):"
+    echo "    Benutzername: $PGADMIN_ADMIN_EMAIL"
+    echo "    Passwort:     $PGADMIN_ADMIN_PASSWORD"
+    echo ""
+  else
+    warn "pgAdmin-Benutzer konnte nicht automatisch erstellt werden."
+    warn "Bitte manuell einrichten: sudo -u $PGADMIN_SERVICE_USER $PGADMIN_DIR/venv/bin/python $PGADMIN_APP_DIR/setup.py add-user EMAIL PASSWORT --admin"
+  fi
+fi
+
+success "pgAdmin 4 aktualisiert"
 
 info "Service wird gestartet..."
 cat > "/etc/systemd/system/${SERVICE_NAME}.service" << EOF
