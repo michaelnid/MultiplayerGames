@@ -790,18 +790,48 @@ beforeUnmount() {
 }
 ```
 
-### Vollbild-Modus (Core-Feature)
+### Vollbild-Modus (Plugin-gesteuert)
 
-Der Core bietet einen integrierten Vollbild-Button fuer alle Spiele. Oben rechts im Spielbereich erscheint ein Vergroesserungs-Icon. Beim Klick wird der Spielcontainer als Overlay ueber die gesamte Seite gelegt (`position: fixed; inset: 0`). Im Overlay wird stattdessen ein X-Icon angezeigt, um den Modus zu verlassen.
+Der Core stellt eine Fullscreen-API bereit, die Plugins **optional** nutzen koennen. Der Core rendert keinen eigenen Button -- das Plugin entscheidet selbst:
 
-**Plugins muessen nichts tun** -- der Vollbild-Button wird automatisch vom Core gerendert. Das Plugin-Frontend wird im Overlay zentriert und kann den gesamten Bildschirm nutzen.
+- **Ob** ein Vollbild-Modus angeboten wird
+- **Wo** der Button platziert wird
+- **Was** im Vollbild angezeigt wird (das gesamte Plugin wird im Overlay gerendert)
 
-**Hinweise fuer Plugin-Entwickler:**
+Wenn Fullscreen aktiviert wird, legt der Core den Spielcontainer als Overlay ueber die gesamte Seite (`position: fixed; inset: 0; z-index: 9999`). Der Nutzer kann das Overlay auch mit `Escape` verlassen.
 
-- Der Overlay-Container hat die CSS-Klasse `game-overlay` im aktiven Zustand (`z-index: 9999`).
+**API (verfuegbar ueber `window`):**
+
+| Funktion | Beschreibung |
+|---|---|
+| `window.enterFullscreen()` | Vollbild aktivieren |
+| `window.exitFullscreen()` | Vollbild verlassen |
+| `window.toggleFullscreen()` | Vollbild umschalten |
+| `window.isFullscreen()` | Gibt `true`/`false` zurueck |
+
+**Beispiel-Implementation im Plugin:**
+
+```javascript
+// Im Template:
+// <button @click="toggleFullscreen">{{ isFullscreen ? 'X' : 'Vergroessern' }}</button>
+
+methods: {
+  toggleFullscreen() {
+    window.toggleFullscreen();
+  },
+},
+computed: {
+  isFullscreen() {
+    return window.isFullscreen();
+  },
+},
+```
+
+**Hinweise:**
+
 - Plugins sollten relative Groessen (`%`, `vw`, `vh`, `flex`, `grid`) statt fester Pixel verwenden, damit das Layout im Vollbild korrekt skaliert.
-- Der Schliessen-Button hat `z-index: 100` und `position: fixed` -- Plugins sollten keine hoeheren z-index-Werte fuer UI-Elemente oben rechts verwenden.
-- Der Nutzer kann das Overlay auch mit `Escape` verlassen.
+- Der Overlay-Container hat die CSS-Klasse `game-overlay` im aktiven Zustand.
+- Es ist voellig in Ordnung, keinen Fullscreen-Button anzubieten -- nicht jedes Spiel braucht das.
 
 ### WebSocket-Events empfangen
 

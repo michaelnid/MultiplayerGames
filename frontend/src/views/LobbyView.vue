@@ -39,14 +39,6 @@
     </div>
 
     <div v-if="lobby.status === 'laeuft' || lobby.status === 'beendet'" class="game-container" :class="{ 'game-overlay': isFullscreen }">
-      <button class="fullscreen-btn" @click="isFullscreen = !isFullscreen" :title="isFullscreen ? 'Vollbild verlassen' : 'Vollbild'">
-        <svg v-if="!isFullscreen" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-        </svg>
-        <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      </button>
       <component v-if="pluginComponent" :is="pluginComponent" />
       <div v-else class="card loading-plugin">
         <p>Plugin wird geladen...</p>
@@ -120,9 +112,14 @@ async function loadPluginFrontend() {
   if (!lobby.value || pluginComponent.value) return;
 
   try {
-    (window as unknown as Record<string, unknown>).socket = ws.socket;
-    (window as unknown as Record<string, unknown>).currentUserId = auth.user?.id;
-    (window as unknown as Record<string, unknown>).lobbyId = props.lobbyId;
+    const win = window as unknown as Record<string, unknown>;
+    win.socket = ws.socket;
+    win.currentUserId = auth.user?.id;
+    win.lobbyId = props.lobbyId;
+    win.enterFullscreen = () => { isFullscreen.value = true; };
+    win.exitFullscreen = () => { isFullscreen.value = false; };
+    win.toggleFullscreen = () => { isFullscreen.value = !isFullscreen.value; };
+    win.isFullscreen = () => isFullscreen.value;
     const pluginUrl = `/plugins/${lobby.value.pluginSlug}/frontend/index.js?t=${Date.now()}`;
     const mod = await import(/* @vite-ignore */ pluginUrl);
     if (mod.default) {
@@ -204,9 +201,14 @@ onUnmounted(() => {
   ws.off(WS_EVENTS.LOBBY_STATUS_CHANGED);
   ws.off(WS_EVENTS.GAME_RESTART);
   document.removeEventListener('keydown', onKeydown);
-  delete (window as unknown as Record<string, unknown>).socket;
-  delete (window as unknown as Record<string, unknown>).currentUserId;
-  delete (window as unknown as Record<string, unknown>).lobbyId;
+  const win = window as unknown as Record<string, unknown>;
+  delete win.socket;
+  delete win.currentUserId;
+  delete win.lobbyId;
+  delete win.enterFullscreen;
+  delete win.exitFullscreen;
+  delete win.toggleFullscreen;
+  delete win.isFullscreen;
 });
 </script>
 
@@ -292,41 +294,6 @@ h2 { font-size: 1rem; margin-bottom: 0.75rem; }
   padding: 1rem;
 }
 
-.fullscreen-btn {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  z-index: 100;
-  background: transparent;
-  border: none;
-  color: var(--color-primary);
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.6;
-  transition: opacity 0.2s, transform 0.2s;
-}
-
-.fullscreen-btn:hover {
-  opacity: 1;
-  transform: scale(1.15);
-}
-
-.game-overlay .fullscreen-btn {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
-  opacity: 0.7;
-}
-
-.game-overlay .fullscreen-btn:hover {
-  opacity: 1;
-  transform: scale(1.15);
-}
 
 .loading-plugin {
   text-align: center;
