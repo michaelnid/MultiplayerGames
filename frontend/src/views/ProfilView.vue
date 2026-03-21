@@ -31,6 +31,7 @@
             <th>Spiel</th>
             <th>Gestartet</th>
             <th>Beendet</th>
+            <th>Punkte</th>
           </tr>
         </thead>
         <tbody>
@@ -38,6 +39,12 @@
             <td>{{ game.pluginName }}</td>
             <td>{{ formatDate(game.startedAt) }}</td>
             <td>{{ game.endedAt ? formatDate(game.endedAt) : 'Laeuft' }}</td>
+            <td>
+              <span v-if="game.scoreChange != null" :class="game.scoreChange > 0 ? 'score-positive' : game.scoreChange < 0 ? 'score-negative' : 'score-neutral'">
+                {{ game.scoreChange > 0 ? '+' : '' }}{{ game.scoreChange }}
+              </span>
+              <span v-else class="text-muted">–</span>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -143,7 +150,7 @@ async function saveUsername() {
 
 const myStats = ref({ totalWins: 0, totalGames: 0, totalScore: 0 });
 const activeLobbies = ref(0);
-const recentGames = ref<{ id: string; pluginName: string; startedAt: string; endedAt: string | null }[]>([]);
+const recentGames = ref<{ id: string; pluginName: string; startedAt: string; endedAt: string | null; scoreChange: number | null }[]>([]);
 
 const roleName = computed(() => {
   const map: Record<string, string> = {
@@ -158,7 +165,7 @@ onMounted(async () => {
   try {
     const statsResult = await api.get<{
       summary: { totalWins: number; totalGames: number; totalScore: number };
-      recentGames: { id: string; pluginName: string; startedAt: string; endedAt: string | null }[];
+      recentGames: { id: string; pluginName: string; startedAt: string; endedAt: string | null; scoreChange: number | null }[];
     }>('/stats/me');
     if (statsResult.data) {
       myStats.value = statsResult.data.summary;
@@ -285,6 +292,10 @@ h2 { font-size: 1.1rem; margin-bottom: 1rem; }
 .error-msg { color: var(--color-danger); font-size: 0.85rem; }
 .success-msg { color: var(--color-success); font-size: 0.85rem; }
 .text-muted { color: var(--color-text-muted); }
+
+.score-positive { color: var(--color-success); font-weight: 600; }
+.score-negative { color: var(--color-danger); font-weight: 600; }
+.score-neutral { color: var(--color-text-muted); font-weight: 600; }
 
 .data-table {
   width: 100%;

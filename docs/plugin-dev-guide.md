@@ -341,7 +341,17 @@ Der Core verwaltet Spielerstatistiken zentral. Plugins müssen Ergebnisse nur me
 
 #### context.stats.recordResult(userId, result)
 
-Speichert ein Spielergebnis. Muss für jeden Spieler am Ende einer Runde/eines Spiels aufgerufen werden.
+Speichert ein Spielergebnis. Muss fuer jeden Spieler am Ende einer Runde/eines Spiels aufgerufen werden.
+
+**Einheitliche Punktevergabe durch den Core:**
+
+| Ergebnis | Punkte |
+|----------|--------|
+| Sieg (`win: true`) | **+300** |
+| Niederlage (weder `win` noch `draw`) | **-100** |
+| Unentschieden (`draw: true`) | **0** |
+
+Die Punktevergabe ist fest im Core definiert und kann nicht durch Plugins ueberschrieben werden. Der `score`-Parameter wird ignoriert -- Plugins muessen nur `win` oder `draw` setzen.
 
 | Parameter | Typ | Beschreibung |
 |-----------|-----|-------------|
@@ -354,20 +364,19 @@ Result-Objekt:
 |------|-----|---------|-------------|
 | `win` | `boolean` | `false` | Spieler hat gewonnen |
 | `draw` | `boolean` | `false` | Unentschieden |
-| `score` | `number` | `0` | Erreichte Punktzahl (wird zum Gesamtscore addiert) |
 
-Logik: Wenn weder `win` noch `draw` gesetzt ist, wird es als Niederlage gewertet. `games_played` wird immer um 1 erhoeht.
+Logik: Wenn weder `win` noch `draw` gesetzt ist, wird es als Niederlage gewertet. `games_played` wird immer um 1 erhoeht. Die Punkte (+300/-100/0) werden automatisch vom Core vergeben und im Profil des Spielers angezeigt.
 
 ```javascript
-// Sieg mit 150 Punkten
-await context.stats.recordResult(gewinnerId, { win: true, score: 150 });
+// Sieg (+300 Punkte)
+await context.stats.recordResult(gewinnerId, { win: true });
 
-// Niederlage mit 30 Punkten
-await context.stats.recordResult(verliererId, { win: false, score: 30 });
+// Niederlage (-100 Punkte)
+await context.stats.recordResult(verliererId, { win: false });
 
-// Unentschieden
-await context.stats.recordResult(spieler1Id, { draw: true, score: 50 });
-await context.stats.recordResult(spieler2Id, { draw: true, score: 50 });
+// Unentschieden (0 Punkte)
+await context.stats.recordResult(spieler1Id, { draw: true });
+await context.stats.recordResult(spieler2Id, { draw: true });
 ```
 
 **Rueckgabe:** `Promise<void>` -- kein Rueckgabewert.
@@ -923,7 +932,6 @@ export default async function(context) {
       for (const p of game.players) {
         await context.stats.recordResult(p.userId, {
           win: p.userId === winner.userId,
-          score: p.userId === winner.userId ? 100 : 10,
         });
       }
       await context.lobby.setStatus(lobbyId, 'beendet');
@@ -2022,9 +2030,9 @@ export default async function(context) {
 
     for (const s of spieler) {
       if (s.userId === gewinnerId) {
-        await context.stats.recordResult(s.userId, { win: true, score: 100 });
+        await context.stats.recordResult(s.userId, { win: true });
       } else if (s.userId !== spiel.spielleiter) {
-        await context.stats.recordResult(s.userId, { win: false, score: 10 });
+        await context.stats.recordResult(s.userId, { win: false });
       }
     }
 

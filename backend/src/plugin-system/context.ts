@@ -85,6 +85,9 @@ export function createPluginContext(
 
     stats: {
       async recordResult(userId, result) {
+        // Einheitliche Punktevergabe: +300 Sieg, -100 Niederlage, 0 Unentschieden
+        const scoreChange = result.win ? 300 : result.draw ? 0 : -100;
+
         const existing = await db('player_stats')
           .where({ user_id: userId, plugin_id: pluginId })
           .first();
@@ -93,11 +96,11 @@ export function createPluginContext(
           const updates: Record<string, unknown> = {
             games_played: existing.games_played + 1,
             last_played: db.fn.now(),
+            total_score: existing.total_score + scoreChange,
           };
           if (result.win) updates.wins = existing.wins + 1;
           else if (result.draw) updates.draws = existing.draws + 1;
           else updates.losses = existing.losses + 1;
-          if (result.score) updates.total_score = existing.total_score + result.score;
 
           await db('player_stats')
             .where({ user_id: userId, plugin_id: pluginId })
@@ -109,10 +112,34 @@ export function createPluginContext(
             wins: result.win ? 1 : 0,
             losses: !result.win && !result.draw ? 1 : 0,
             draws: result.draw ? 1 : 0,
-            total_score: result.score || 0,
+            total_score: scoreChange,
             games_played: 1,
             last_played: db.fn.now(),
           });
+        }
+
+        // Ergebnis in game_sessions.result_data speichern
+        const session = await db('game_sessions')
+          .join('lobbies', 'game_sessions.lobby_id', 'lobbies.id')
+          .join('lobby_players', 'lobbies.id', 'lobby_players.lobby_id')
+          .where('game_sessions.plugin_id', pluginId)
+          .where('lobby_players.user_id', userId)
+          .orderBy('game_sessions.started_at', 'desc')
+          .select('game_sessions.id', 'game_sessions.result_data')
+          .first();
+
+        if (session) {
+          const currentData = typeof session.result_data === 'string'
+            ? JSON.parse(session.result_data)
+            : (session.result_data || {});
+          currentData.playerResults = currentData.playerResults || {};
+          currentData.playerResults[userId] = {
+            result: result.win ? 'win' : result.draw ? 'draw' : 'loss',
+            scoreChange,
+          };
+          await db('game_sessions')
+            .where('id', session.id)
+            .update({ result_data: JSON.stringify(currentData) });
         }
       },
 

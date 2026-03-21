@@ -179,12 +179,29 @@ export async function statsRoutes(fastify: FastifyInstance) {
     const totalGames = stats.reduce((sum, s) => sum + s.gamesPlayed, 0);
     const totalScore = stats.reduce((sum, s) => sum + s.totalScore, 0);
 
+    const enrichedGames = recentGames.map((game) => {
+      let scoreChange: number | null = null;
+      try {
+        const data = typeof game.resultData === 'string' ? JSON.parse(game.resultData) : (game.resultData || {});
+        if (data.playerResults?.[userId]) {
+          scoreChange = data.playerResults[userId].scoreChange ?? null;
+        }
+      } catch { /* ignore */ }
+      return {
+        id: game.id,
+        pluginName: game.pluginName,
+        startedAt: game.startedAt,
+        endedAt: game.endedAt,
+        scoreChange,
+      };
+    });
+
     return {
       success: true,
       data: {
         summary: { totalWins, totalGames, totalScore },
         perPlugin: stats,
-        recentGames,
+        recentGames: enrichedGames,
       },
     };
   });
