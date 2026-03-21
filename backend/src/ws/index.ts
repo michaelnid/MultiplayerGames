@@ -47,7 +47,7 @@ export function setupWebSocket(io: Server, db: Knex) {
 
       const lobby = await db('lobbies')
         .where('id', payload.lobbyId)
-        .whereIn('status', ['wartend', 'laeuft'])
+        .whereIn('status', ['wartend', 'laeuft', 'beendet'])
         .first();
 
       if (!lobby) return;

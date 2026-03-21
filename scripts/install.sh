@@ -164,6 +164,8 @@ SESSION_SECRET=$SESSION_SECRET
 
 DOMAIN=$DOMAIN
 PGADMIN_URL=$PGADMIN_URL_VALUE
+PGADMIN_ADMIN_EMAIL=
+PGADMIN_ADMIN_PASSWORD=
 
 CORE_VERSION=1.0.0
 EOF
@@ -278,6 +280,31 @@ if ! run_as_pgadmin "PGADMIN_SETUP_EMAIL='$PGADMIN_ADMIN_EMAIL' PGADMIN_SETUP_PA
   PGADMIN_ADMIN_PASSWORD="(manuell einrichten)"
 fi
 
+# pgAdmin-Credentials in .env speichern
+sed -i "s|^PGADMIN_ADMIN_EMAIL=.*|PGADMIN_ADMIN_EMAIL=$PGADMIN_ADMIN_EMAIL|" "$INSTALL_DIR/.env"
+sed -i "s|^PGADMIN_ADMIN_PASSWORD=.*|PGADMIN_ADMIN_PASSWORD=$PGADMIN_ADMIN_PASSWORD|" "$INSTALL_DIR/.env"
+
+# PostgreSQL-Server in pgAdmin registrieren (mit Passwort fuer auto-connect)
+cat > /tmp/mike-pgadmin-servers.json << JSONEOF
+{
+  "Servers": {
+    "1": {
+      "Name": "MIKE Games",
+      "Group": "Servers",
+      "Host": "127.0.0.1",
+      "Port": 5432,
+      "MaintenanceDB": "$DB_NAME",
+      "Username": "$DB_USER",
+      "Password": "$DB_PASSWORD",
+      "SSLMode": "prefer",
+      "SavePassword": true
+    }
+  }
+}
+JSONEOF
+run_as_pgadmin "'$PGADMIN_DIR/venv/bin/python' '$PGADMIN_APP_DIR/setup.py' load-servers /tmp/mike-pgadmin-servers.json --user '$PGADMIN_ADMIN_EMAIL' 2>&1" || true
+rm -f /tmp/mike-pgadmin-servers.json
+
 cat > "/etc/systemd/system/${PGADMIN_SERVICE_NAME}.service" << EOF
 [Unit]
 Description=MIKE pgAdmin 4
@@ -360,7 +387,7 @@ server {
     }
 
     location /pgadmin4/ {
-        proxy_pass http://unix:$PGADMIN_SOCKET_DIR/pgadmin4.sock;
+        proxy_pass http://unix:$PGADMIN_SOCKET_DIR/pgadmin4.sock:/;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Script-Name /pgadmin4;
@@ -384,6 +411,7 @@ NGINXEOF
 
   ln -sf "/etc/nginx/sites-available/$SERVICE_NAME" "/etc/nginx/sites-enabled/"
   rm -f /etc/nginx/sites-enabled/default
+  usermod -aG mike-pgadmin4 www-data
 
   if nginx -t 2>/dev/null; then
     systemctl reload nginx

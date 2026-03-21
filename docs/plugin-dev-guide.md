@@ -520,6 +520,26 @@ context.lobby.onPlayerLeave((userId, lobbyId) => {
 });
 ```
 
+#### context.lobby.onGameRestart(handler)
+
+Registriert einen Handler, der aufgerufen wird, wenn der Host "Erneut spielen" klickt und der Core die Lobby neu startet. Der Handler wird aufgerufen **bevor** das Frontend die Plugin-Komponente neu laedt und erneut `init-request` sendet.
+
+Das Plugin **muss** in diesem Handler seinen internen Spielzustand fuer die betroffene Lobby zuruecksetzen (z.B. Spielfelder, Punktestaende, Rundenzaehler loeschen), damit der nachfolgende `init-request` ein frisches Spiel aufbaut.
+
+| Parameter | Typ | Beschreibung |
+|-----------|-----|-------------|
+| `handler` | `function(lobbyId)` | Callback mit der Lobby-ID |
+
+```javascript
+context.lobby.onGameRestart((lobbyId) => {
+  // Alten Spielzustand fuer diese Lobby loeschen
+  games.delete(lobbyId);
+  console.log(`Spiel in Lobby ${lobbyId} wird neu gestartet`);
+});
+```
+
+**Wichtig:** Wenn ein Plugin `onGameRestart` nicht registriert, muss es sicherstellen, dass der `init-request`-Handler auch bei erneutem Aufruf fuer dieselbe Lobby korrekt funktioniert (z.B. bestehenden Zustand ueberschreibt statt einen Fehler zu werfen).
+
 ---
 
 ### context.storage -- Laufzeit-Speicher
@@ -1562,6 +1582,7 @@ Diese Events werden vom Core gesendet und empfangen. Plugins sollen sie **nicht*
 | `lobby:player-joined` | Server -> Client | `{ userId, username }` | Spieler ist beigetreten |
 | `lobby:player-left` | Server -> Client | `{ userId, username }` | Spieler hat verlassen |
 | `lobby:status-changed` | Server -> Client | `{ lobbyId, status }` | Lobby-Status hat sich geaendert |
+| `game:restart` | Server -> Client | `{ lobbyId }` | Spiel wird neu gestartet (Host hat "Erneut spielen" geklickt). Frontend laedt Plugin-Komponente neu. |
 | `chat:message` | Bidirektional | `{ userId, username, message, system, timestamp }` | Chat-Nachricht |
 | `chat:system` | Server -> Client | `{ message, system: true, timestamp }` | Systemnachricht |
 
@@ -1605,6 +1626,13 @@ Lobby erstellt (GameMaster/Admin)
     | Plugin ruft context.lobby.setStatus(lobbyId, 'beendet') auf
     v
 [BEENDET] --- Ergebnisse gespeichert, Lobby-Code freigegeben
+    |
+    | (Optional) Host klickt "Erneut spielen"
+    | Core ruft onGameRestart-Handler auf, neue game_session wird erstellt
+    v
+[LAEUFT] --- Neues Spiel mit denselben Spielern, Plugin-Frontend wird neu geladen
+    |
+    ...  (Zyklus kann beliebig oft wiederholt werden)
 ```
 
 Alternativ:
@@ -1619,6 +1647,36 @@ Alternativ:
 1. **Spiel starten:** Der Core setzt den Status auf `laeuft`, wenn der GameMaster startet. Anschliessend laedt der Core das Plugin-Frontend und mountet die Komponente. In `mounted()` sollte das Plugin einen `init-request` Game-Event senden, um den initialen Spielzustand vom Backend anzufordern. Das Backend erstellt daraufhin die Spielinstanz und sendet den Zustand an alle Spieler.
 2. **Ergebnisse melden:** Am Ende des Spiels **muss** das Plugin für jeden Spieler `context.stats.recordResult()` aufrufen.
 3. **Status beenden:** Das Plugin **muss** `context.lobby.setStatus(lobbyId, 'beendet')` aufrufen, wenn das Spiel vorbei ist. Ohne diesen Aufruf bleibt die Lobby aktiv.
+4. **Neustart unterstuetzen:** Plugins sollten `context.lobby.onGameRestart(handler)` registrieren, um bei einem Neustart ihren internen Zustand zurueckzusetzen. Nach dem Neustart laedt der Core das Plugin-Frontend neu und der normale `init-request`-Flow beginnt von vorne. Falls das Plugin `onGameRestart` nicht registriert, **muss** der `init-request`-Handler auch bei erneutem Aufruf fuer dieselbe Lobby korrekt funktionieren.
+
+### Neustart-Ablauf im Detail
+
+Wenn der Host nach Spielende "Erneut spielen" klickt, passiert Folgendes:
+
+1. **Core (Backend):**
+   - Prueft, ob Lobby-Status `beendet` ist und der Anfragende der Host/Admin ist
+   - Setzt Lobby-Status zurueck auf `laeuft`, setzt `closed_at` auf `null`
+   - Erstellt eine neue `game_sessions`-Zeile (jede Runde wird einzeln getrackt)
+   - Ruft `dispatch.gameRestart(lobbyId)` auf -- das loest den `onGameRestart`-Handler im Plugin aus
+   - Sendet `game:restart`-Event an alle Spieler in der Lobby
+
+2. **Plugin (Backend):**
+   - Der `onGameRestart`-Handler wird aufgerufen
+   - Das Plugin loescht den alten Spielzustand fuer die Lobby (z.B. `games.delete(lobbyId)`)
+   - Danach ist das Plugin bereit, einen neuen `init-request` zu empfangen
+
+3. **Core (Frontend):**
+   - Empfaengt das `game:restart`-Event
+   - Setzt `lobby.status` auf `laeuft`
+   - Entlaedt die alte Plugin-Komponente und laedt sie neu
+   - Die Plugin-Komponente wird erneut gemountet und sendet `init-request`
+
+4. **Plugin (Frontend):**
+   - Die Komponente wird neu gemountet (kompletter Neustart, frischer Zustand)
+   - `mounted()` wird aufgerufen, Plugin sendet `init-request`
+   - Backend antwortet mit neuem Spielzustand
+
+**Wichtig fuer Plugin-Entwickler:** Da die Frontend-Komponente komplett neu geladen wird, muss das Frontend keinen Restart-spezifischen Code enthalten. Der gesamte Restart wird durch das erneute Mounten automatisch abgedeckt.
 
 ---
 
@@ -1693,11 +1751,12 @@ Folge:
 6. **`coreVersion` angeben** für klare Kompatibilität.
 7. **Spielergebnisse über `context.stats.recordResult()` melden.**
 8. **Lobby-Status korrekt setzen** (`beendet` oder `geschlossen`), damit Ressourcen sauber freigegeben werden.
-9. **Alle eingehenden Daten validieren** (WebSocket/API).
-10. **Keine blockierenden Endlosschleifen.** Plugin-Code teilt sich CPU und Event-Loop mit dem Core.
-11. **Maximale ZIP-Größe: 50 MB.**
-12. **ESM-Format verwenden** (`default` oder `register` Export).
-13. **Core-Design einhalten** (CSS-Variablen/Buttons/Card-Klassen).
+9. **Neustart unterstuetzen:** `context.lobby.onGameRestart()` registrieren oder sicherstellen, dass `init-request` bei erneutem Aufruf korrekt funktioniert.
+10. **Alle eingehenden Daten validieren** (WebSocket/API).
+11. **Keine blockierenden Endlosschleifen.** Plugin-Code teilt sich CPU und Event-Loop mit dem Core.
+12. **Maximale ZIP-Größe: 50 MB.**
+13. **ESM-Format verwenden** (`default` oder `register` Export).
+14. **Core-Design einhalten** (CSS-Variablen/Buttons/Card-Klassen).
 
 ### Regelstatus: Erzwungen vs Review
 
@@ -1788,7 +1847,8 @@ Vor dem Hochladen eines Plugins sollten mindestens folgende Punkte abgeprüft we
 4. Alle eingehenden Daten werden im Backend validiert.
 5. Plugin entfernt Event-Listener in `beforeUnmount()`.
 6. Bei Spielende werden Ergebnisse geschrieben und Lobby-Status gesetzt.
-7. Keine externen CDNs, keine externen Runtime-Abhaengigkeiten.
+7. Plugin unterstuetzt Neustart (via `onGameRestart` oder robuster `init-request`-Handler).
+8. Keine externen CDNs, keine externen Runtime-Abhaengigkeiten.
 8. ZIP liegt unter 50 MB und hat `manifest.json` im Root.
 9. Admin-Einstellungskomponente (falls vorhanden) ist robust gegen fehlende/ungültige Daten.
 10. Mehrspieler-Fall wurde manuell mit mindestens 2 Clients getestet.
@@ -1839,6 +1899,7 @@ Das Kniffel-Plugin (`Kniffel/`) ist das produktionsreife Referenz-Plugin und dem
 - `context.stats.recordResult` -- Ergebnisse am Spielende melden
 - `context.lobby.getPlayers` und `context.lobby.setStatus` -- Lobby-Verwaltung
 - `context.lobby.onPlayerJoin` und `context.lobby.onPlayerLeave` -- Spieler-Lifecycle
+- `context.lobby.onGameRestart` -- Spielzustand bei Neustart zuruecksetzen
 - `context.chat.sendSystem` -- Systemnachrichten im Chat
 
 Das Kniffel-Plugin zeigt ausserdem:
@@ -1892,6 +1953,11 @@ export default async function(context) {
 
   context.lobby.onPlayerJoin((userId, lobbyId) => {
     context.chat.sendSystem(lobbyId, 'Ein neuer Spieler ist bereit!');
+  });
+
+  // Spielzustand zuruecksetzen wenn Host "Erneut spielen" klickt
+  context.lobby.onGameRestart((lobbyId) => {
+    spiele.delete(lobbyId);
   });
 
   context.ws.onMessage('zahl-waehlen', async (data, userId, lobbyId) => {

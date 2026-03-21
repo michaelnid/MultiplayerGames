@@ -17,6 +17,13 @@
         >
           Spiel starten ({{ players.length }}/{{ lobby.minPlayers }} min)
         </button>
+        <button
+          v-if="isCreator && lobby.status === 'beendet'"
+          class="btn-primary"
+          @click="restartGame"
+        >
+          Erneut spielen
+        </button>
         <button class="btn-secondary" @click="leaveLobby">Verlassen</button>
       </div>
     </div>
@@ -144,11 +151,23 @@ function setupSocketEvents() {
     const d = data as { status: string };
     if (lobby.value) lobby.value.status = d.status;
   });
+
+  ws.on(WS_EVENTS.GAME_RESTART, () => {
+    if (lobby.value) {
+      lobby.value.status = 'laeuft';
+      pluginComponent.value = null;
+      loadPluginFrontend();
+    }
+  });
 }
 
 async function startGame() {
   await api.post(`/lobbies/${props.lobbyId}/start`, {});
   await loadLobby();
+}
+
+async function restartGame() {
+  await api.post(`/lobbies/${props.lobbyId}/restart`, {});
 }
 
 async function leaveLobby() {
@@ -167,6 +186,7 @@ onUnmounted(() => {
   ws.off(WS_EVENTS.LOBBY_PLAYER_JOINED);
   ws.off(WS_EVENTS.LOBBY_PLAYER_LEFT);
   ws.off(WS_EVENTS.LOBBY_STATUS_CHANGED);
+  ws.off(WS_EVENTS.GAME_RESTART);
   delete (window as unknown as Record<string, unknown>).socket;
   delete (window as unknown as Record<string, unknown>).currentUserId;
   delete (window as unknown as Record<string, unknown>).lobbyId;

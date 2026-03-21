@@ -23,6 +23,7 @@ export interface PluginContext {
     setStatus: (lobbyId: string, status: string) => Promise<void>;
     onPlayerJoin: (handler: (userId: string, lobbyId: string) => void) => void;
     onPlayerLeave: (handler: (userId: string, lobbyId: string) => void) => void;
+    onGameRestart: (handler: (lobbyId: string) => void) => void;
   };
 
   storage: {
@@ -45,6 +46,7 @@ export interface PluginDispatch {
   message: (event: string, data: unknown, userId: string, lobbyId: string) => void;
   playerJoin: (userId: string, lobbyId: string) => void;
   playerLeave: (userId: string, lobbyId: string) => void;
+  gameRestart: (lobbyId: string) => void;
 }
 
 export interface PluginContextResult {
@@ -61,6 +63,7 @@ export function createPluginContext(
   const eventHandlers = new Map<string, ((data: unknown, userId: string, lobbyId: string) => void)[]>();
   const joinHandlers: ((userId: string, lobbyId: string) => void)[] = [];
   const leaveHandlers: ((userId: string, lobbyId: string) => void)[] = [];
+  const restartHandlers: ((lobbyId: string) => void)[] = [];
 
   const context: PluginContext = {
     slug,
@@ -181,6 +184,10 @@ export function createPluginContext(
       onPlayerLeave(handler) {
         leaveHandlers.push(handler);
       },
+
+      onGameRestart(handler) {
+        restartHandlers.push(handler);
+      },
     },
 
     storage: {
@@ -297,6 +304,15 @@ export function createPluginContext(
           handler(userId, lobbyId);
         } catch (err) {
           console.error(`[${slug}] Fehler in onPlayerLeave-Handler:`, err);
+        }
+      }
+    },
+    gameRestart(lobbyId) {
+      for (const handler of restartHandlers) {
+        try {
+          handler(lobbyId);
+        } catch (err) {
+          console.error(`[${slug}] Fehler in onGameRestart-Handler:`, err);
         }
       }
     },

@@ -32,6 +32,7 @@ export const WS_EVENTS = {
   GAME_START: 'game:start',
   GAME_END: 'game:end',
   GAME_EVENT: 'game:event',
+  GAME_RESTART: 'game:restart',
   CHAT_MESSAGE: 'chat:message',
   CHAT_SYSTEM: 'chat:system',
 } as const;

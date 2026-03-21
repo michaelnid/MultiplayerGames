@@ -5,6 +5,7 @@ import { db } from '../db/knex.js';
 import { requireAdmin, requireAuth, requireGameMasterOrAdmin } from '../auth/middleware.js';
 import { logAudit } from '../auth/audit.js';
 import { generateLobbyCode } from '../lobby/code-generator.js';
+import { getPluginDispatch } from '../plugin-system/loader.js';
 import { parseJsonValue } from '../utils/json.js';
 
 let io: Server | null = null;
@@ -341,6 +342,53 @@ export async function lobbyRoutes(fastify: FastifyInstance) {
       io.to(`lobby:${lobby.id}`).emit(WS_EVENTS.LOBBY_STATUS_CHANGED, {
         lobbyId: lobby.id,
         status: 'geschlossen',
+      });
+    }
+
+    return { success: true };
+  });
+
+  fastify.post<{
+    Params: { id: string };
+  }>('/:id/restart', { preHandler: requireGameMasterOrAdmin }, async (request, reply) => {
+    const lobby = await db('lobbies').where('id', request.params.id).first();
+    if (!lobby) {
+      return reply.status(404).send({ success: false, error: 'Lobby nicht gefunden' });
+    }
+
+    if (lobby.status !== 'beendet') {
+      return reply.status(400).send({ success: false, error: 'Nur beendete Spiele koennen neu gestartet werden' });
+    }
+
+    if (lobby.created_by !== request.session.userId && request.session.role !== 'admin') {
+      return reply.status(403).send({ success: false, error: 'Nur der Ersteller kann das Spiel neu starten' });
+    }
+
+    await db.transaction(async (trx) => {
+      await trx('game_sessions')
+        .where('lobby_id', lobby.id)
+        .whereNull('ended_at')
+        .update({ ended_at: trx.fn.now() });
+
+      await trx('lobbies').where('id', lobby.id).update({
+        status: 'laeuft',
+        closed_at: null,
+      });
+
+      await trx('game_sessions').insert({
+        lobby_id: lobby.id,
+        plugin_id: lobby.plugin_id,
+      });
+    });
+
+    const dispatch = getPluginDispatch(lobby.plugin_id);
+    if (dispatch) {
+      dispatch.gameRestart(lobby.id);
+    }
+
+    if (io) {
+      io.to(`lobby:${lobby.id}`).emit(WS_EVENTS.GAME_RESTART, {
+        lobbyId: lobby.id,
       });
     }
 

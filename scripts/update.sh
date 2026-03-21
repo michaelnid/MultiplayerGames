@@ -216,6 +216,37 @@ if [ "$PGADMIN_BOOTSTRAP_USER" -eq 1 ] && [ "$PGADMIN_SETUP_OK" -eq 1 ]; then
   echo "    Benutzername: $PGADMIN_ADMIN_EMAIL"
   echo "    Passwort:     $PGADMIN_ADMIN_PASSWORD"
   echo ""
+
+  # pgAdmin-Credentials in .env speichern
+  if grep -q "^PGADMIN_ADMIN_EMAIL=" "$INSTALL_DIR/.env"; then
+    sed -i "s|^PGADMIN_ADMIN_EMAIL=.*|PGADMIN_ADMIN_EMAIL=$PGADMIN_ADMIN_EMAIL|" "$INSTALL_DIR/.env"
+    sed -i "s|^PGADMIN_ADMIN_PASSWORD=.*|PGADMIN_ADMIN_PASSWORD=$PGADMIN_ADMIN_PASSWORD|" "$INSTALL_DIR/.env"
+  else
+    echo "" >> "$INSTALL_DIR/.env"
+    echo "PGADMIN_ADMIN_EMAIL=$PGADMIN_ADMIN_EMAIL" >> "$INSTALL_DIR/.env"
+    echo "PGADMIN_ADMIN_PASSWORD=$PGADMIN_ADMIN_PASSWORD" >> "$INSTALL_DIR/.env"
+  fi
+
+  # PostgreSQL-Server in pgAdmin registrieren (mit Passwort fuer auto-connect)
+  cat > /tmp/mike-pgadmin-servers.json << JSONEOF
+{
+  "Servers": {
+    "1": {
+      "Name": "MIKE Games",
+      "Group": "Servers",
+      "Host": "$DB_HOST",
+      "Port": $DB_PORT,
+      "MaintenanceDB": "$DB_NAME",
+      "Username": "$DB_USER",
+      "Password": "$DB_PASSWORD",
+      "SSLMode": "prefer",
+      "SavePassword": true
+    }
+  }
+}
+JSONEOF
+  run_as_pgadmin "'$PGADMIN_DIR/venv/bin/python' '$PGADMIN_APP_DIR/setup.py' load-servers /tmp/mike-pgadmin-servers.json --user '$PGADMIN_ADMIN_EMAIL' 2>&1" || true
+  rm -f /tmp/mike-pgadmin-servers.json
 fi
 
 success "pgAdmin 4 aktualisiert"
@@ -257,7 +288,7 @@ server {
     }
 
     location /pgadmin4/ {
-        proxy_pass http://unix:$PGADMIN_SOCKET_DIR/pgadmin4.sock;
+        proxy_pass http://unix:$PGADMIN_SOCKET_DIR/pgadmin4.sock:/;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Script-Name /pgadmin4;
@@ -281,12 +312,20 @@ EOF
 
   ln -sf "/etc/nginx/sites-available/$SERVICE_NAME" "/etc/nginx/sites-enabled/"
   rm -f /etc/nginx/sites-enabled/default
+  usermod -aG mike-pgadmin4 www-data
 
   if nginx -t > /dev/null 2>&1; then
     systemctl reload nginx
     success "Nginx aktualisiert"
   else
     fail "Nginx-Konfiguration für pgAdmin ist fehlerhaft."
+  fi
+
+  info "SSL-Zertifikat wird erneuert..."
+  if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email 2>&1 | tail -3; then
+    success "SSL aktualisiert"
+  else
+    warn "SSL-Erneuerung fehlgeschlagen. Bitte manuell pruefen: sudo certbot --nginx -d $DOMAIN"
   fi
 fi
 
