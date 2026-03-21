@@ -427,7 +427,72 @@ onMounted(async () => {
   padding: 0.5rem 1rem;
 }
 
+@media (max-width: 1024px) {
+  .game-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .detail-card {
+    max-width: 560px;
+  }
+}
+
 @media (max-width: 768px) {
+  .bibliothek {
+    padding: 0 1rem;
+  }
+
+  .bib-header {
+    padding: 2rem 0 1.5rem;
+  }
+
+  .bib-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .game-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+  }
+
+  .game-card {
+    padding: 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .game-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+
+  .game-card-img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .game-card-letter {
+    font-size: 1rem;
+  }
+
+  .game-card-title {
+    font-size: 0.85rem;
+  }
+
+  .game-card-sub {
+    font-size: 0.75rem;
+    -webkit-line-clamp: 1;
+  }
+
+  .detail-card {
+    max-width: 100%;
+  }
+
+  .detail-content {
+    padding: 1rem;
+  }
+
   .detail-actions {
     flex-direction: column;
   }
