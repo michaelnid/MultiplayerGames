@@ -44,17 +44,16 @@ Das Update-Skript migriert bestehende Installationen ebenfalls auf den sicheren 
 sudo /opt/mike-games/scripts/uninstall.sh
 ```
 
-## Optional: pgAdmin-4-Link im Adminbereich
+## pgAdmin 4 (automatisch bei Fresh Install)
 
-Die Anwendung nutzt PostgreSQL. Falls du eine eigene pgAdmin-4-Instanz betreibst, kannst du im Adminbereich unter `Administration -> System` einen Direktlink anzeigen.
+Bei einem Fresh Install wird pgAdmin 4 ohne Docker automatisch eingerichtet:
 
-Dazu in `/opt/mike-games/.env` setzen:
+- eigener Systemdienst `mike-pgadmin4`,
+- Reverse Proxy unter `/pgadmin4` (bei Domain-Setup),
+- Direktlink im Adminbereich unter `Administration -> System`.
 
-```bash
-PGADMIN_URL=https://deine-domain.tld/pgadmin4
-```
-
-Alternativ ist auch ein relativer Pfad wie `/pgadmin4` möglich.
+`PGADMIN_URL` wird im Domain-Betrieb automatisch auf `/pgadmin4` gesetzt.
+Bei bestehenden Installationen ergänzt das Update-Skript den Schlüssel und migriert die Konfiguration.
 
 ## Entwicklung
 

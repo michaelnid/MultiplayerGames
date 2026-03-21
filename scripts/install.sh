@@ -6,6 +6,12 @@ SERVICE_NAME="mike-games"
 SERVICE_USER="mike-games"
 DB_NAME="mike_games"
 DB_USER="mike_games"
+PGADMIN_DIR="/opt/mike-pgadmin4"
+PGADMIN_SERVICE_NAME="mike-pgadmin4"
+PGADMIN_SERVICE_USER="mike-pgadmin4"
+PGADMIN_DATA_DIR="/var/lib/mike-pgadmin4"
+PGADMIN_LOG_DIR="/var/log/mike-pgadmin4"
+PGADMIN_SOCKET_DIR="/run/mike-pgadmin4"
 REPO_URL="https://github.com/michaelnid/MultiplayerGames.git"
 
 RED='\033[0;31m'
@@ -33,6 +39,11 @@ run_as_service() {
   su -s /bin/bash -c "$cmd" "$SERVICE_USER"
 }
 
+run_as_pgadmin() {
+  local cmd="$1"
+  su -s /bin/bash -c "$cmd" "$PGADMIN_SERVICE_USER"
+}
+
 echo ""
 echo "========================================"
 echo "  MIKE Multiplayer Game System"
@@ -53,12 +64,12 @@ if [ -d "$INSTALL_DIR" ]; then
 fi
 
 # ================================
-echo "[1/6] Systemabhaengigkeiten"
+echo "[1/7] Systemabhaengigkeiten"
 echo "----------------------------"
 
 info "System wird aktualisiert..."
 apt-get update -qq > /dev/null 2>&1
-apt-get install -y -qq curl git nginx certbot python3-certbot-nginx build-essential > /dev/null 2>&1
+apt-get install -y -qq curl git nginx certbot python3-certbot-nginx build-essential python3 python3-venv python3-pip > /dev/null 2>&1
 success "Basissystem aktualisiert"
 
 if ! command -v node &> /dev/null || [[ $(node -v | cut -d'.' -f1 | tr -d 'v') -lt 20 ]]; then
@@ -82,13 +93,14 @@ fi
 
 # ================================
 echo ""
-echo "[2/6] Zugriffskonfiguration"
+echo "[2/7] Zugriffskonfiguration"
 echo "----------------------------"
 echo ""
 
 USE_DOMAIN=""
 DOMAIN=""
 APP_HOST="0.0.0.0"
+PGADMIN_URL_VALUE=""
 
 ask "Soll das System über eine Domain erreichbar sein? (j/n)" USE_DOMAIN
 
@@ -100,14 +112,16 @@ if [[ "$USE_DOMAIN" == "j" || "$USE_DOMAIN" == "J" ]]; then
   info "Domain: $DOMAIN"
   info "Nginx und SSL werden nach der Installation eingerichtet."
   APP_HOST="127.0.0.1"
+  PGADMIN_URL_VALUE="/pgadmin4"
 else
   info "System wird nur über IP erreichbar sein (Port 3000)."
   APP_HOST="0.0.0.0"
+  PGADMIN_URL_VALUE=""
 fi
 
 # ================================
 echo ""
-echo "[3/6] Repository und Datenbank"
+echo "[3/7] Repository und Datenbank"
 echo "----------------------------"
 
 info "Service-Benutzer wird eingerichtet..."
@@ -149,7 +163,7 @@ DB_PASSWORD=$DB_PASSWORD
 SESSION_SECRET=$SESSION_SECRET
 
 DOMAIN=$DOMAIN
-PGADMIN_URL=
+PGADMIN_URL=$PGADMIN_URL_VALUE
 
 CORE_VERSION=1.0.0
 EOF
@@ -160,7 +174,7 @@ success ".env generiert"
 
 # ================================
 echo ""
-echo "[4/6] Build"
+echo "[4/7] Build"
 echo "----------------------------"
 
 info "Abhaengigkeiten werden installiert..."
@@ -197,7 +211,94 @@ success "Frontend gebaut"
 
 # ================================
 echo ""
-echo "[5/6] Admin-Benutzer"
+echo "[5/7] pgAdmin 4"
+echo "----------------------------"
+
+PGADMIN_ADMIN_EMAIL="admin@localhost.local"
+if [ -n "$DOMAIN" ]; then
+  PGADMIN_ADMIN_EMAIL="admin@$DOMAIN"
+fi
+PGADMIN_ADMIN_PASSWORD=$(openssl rand -base64 20 | tr -dc 'a-zA-Z0-9' | head -c 20)
+
+info "pgAdmin-Service-Benutzer wird eingerichtet..."
+if ! id -u "$PGADMIN_SERVICE_USER" > /dev/null 2>&1; then
+  useradd --system --home "$PGADMIN_DIR" --shell /usr/sbin/nologin "$PGADMIN_SERVICE_USER"
+fi
+
+mkdir -p "$PGADMIN_DIR" "$PGADMIN_DATA_DIR" "$PGADMIN_LOG_DIR"
+chown -R "$PGADMIN_SERVICE_USER:$PGADMIN_SERVICE_USER" "$PGADMIN_DIR" "$PGADMIN_DATA_DIR" "$PGADMIN_LOG_DIR"
+
+if [ ! -x "$PGADMIN_DIR/venv/bin/python" ]; then
+  info "Python-Umgebung für pgAdmin wird erstellt..."
+  run_as_pgadmin "python3 -m venv '$PGADMIN_DIR/venv'"
+fi
+
+info "pgAdmin 4 und Gunicorn werden installiert..."
+run_as_pgadmin "'$PGADMIN_DIR/venv/bin/pip' install --upgrade pip > /dev/null 2>&1"
+run_as_pgadmin "'$PGADMIN_DIR/venv/bin/pip' install --upgrade pgadmin4 gunicorn > /dev/null 2>&1"
+
+PGADMIN_APP_DIR=$(run_as_pgadmin "'$PGADMIN_DIR/venv/bin/python' -c \"import os, pgadmin4; print(os.path.dirname(pgadmin4.__file__))\"")
+
+cat > "$PGADMIN_DIR/run-gunicorn.sh" << EOF
+#!/bin/bash
+set -euo pipefail
+exec "$PGADMIN_DIR/venv/bin/gunicorn" \\
+  --bind unix:$PGADMIN_SOCKET_DIR/pgadmin4.sock \\
+  --workers=1 \\
+  --threads=25 \\
+  --chdir "$PGADMIN_APP_DIR" \\
+  pgAdmin4:app
+EOF
+chmod 750 "$PGADMIN_DIR/run-gunicorn.sh"
+chown "$PGADMIN_SERVICE_USER:$PGADMIN_SERVICE_USER" "$PGADMIN_DIR/run-gunicorn.sh"
+
+mkdir -p "$PGADMIN_DATA_DIR/sessions" "$PGADMIN_DATA_DIR/storage"
+chown -R "$PGADMIN_SERVICE_USER:$PGADMIN_SERVICE_USER" "$PGADMIN_DATA_DIR"
+
+info "pgAdmin-Basisbenutzer wird initialisiert..."
+run_as_pgadmin "PGADMIN_CONFIG_SERVER_MODE=True \
+PGADMIN_CONFIG_DATA_DIR='$PGADMIN_DATA_DIR' \
+PGADMIN_CONFIG_LOG_FILE='$PGADMIN_LOG_DIR/pgadmin4.log' \
+PGADMIN_CONFIG_SQLITE_PATH='$PGADMIN_DATA_DIR/pgadmin4.db' \
+PGADMIN_CONFIG_SESSION_DB_PATH='$PGADMIN_DATA_DIR/sessions' \
+PGADMIN_CONFIG_STORAGE_DIR='$PGADMIN_DATA_DIR/storage' \
+'$PGADMIN_DIR/venv/bin/python' '$PGADMIN_APP_DIR/setup.py' add-user '$PGADMIN_ADMIN_EMAIL' '$PGADMIN_ADMIN_PASSWORD' --admin > /dev/null 2>&1"
+
+cat > "/etc/systemd/system/${PGADMIN_SERVICE_NAME}.service" << EOF
+[Unit]
+Description=MIKE pgAdmin 4
+After=network.target
+
+[Service]
+Type=simple
+User=$PGADMIN_SERVICE_USER
+Group=$PGADMIN_SERVICE_USER
+ExecStart=$PGADMIN_DIR/run-gunicorn.sh
+Restart=on-failure
+RestartSec=5
+RuntimeDirectory=mike-pgadmin4
+RuntimeDirectoryMode=0750
+Environment=PYTHONUNBUFFERED=1
+Environment=PGADMIN_CONFIG_SERVER_MODE=True
+Environment=PGADMIN_CONFIG_DATA_DIR=$PGADMIN_DATA_DIR
+Environment=PGADMIN_CONFIG_LOG_FILE=$PGADMIN_LOG_DIR/pgadmin4.log
+Environment=PGADMIN_CONFIG_SQLITE_PATH=$PGADMIN_DATA_DIR/pgadmin4.db
+Environment=PGADMIN_CONFIG_SESSION_DB_PATH=$PGADMIN_DATA_DIR/sessions
+Environment=PGADMIN_CONFIG_STORAGE_DIR=$PGADMIN_DATA_DIR/storage
+Environment=PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION=True
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable "$PGADMIN_SERVICE_NAME" > /dev/null 2>&1
+systemctl start "$PGADMIN_SERVICE_NAME"
+success "pgAdmin 4 installiert und gestartet"
+
+# ================================
+echo ""
+echo "[6/7] Admin-Benutzer"
 echo "----------------------------"
 
 ADMIN_PASSWORD=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 12)
@@ -210,7 +311,7 @@ success "Admin-Benutzer erstellt"
 
 # ================================
 echo ""
-echo "[6/6] Service und Netzwerk"
+echo "[7/7] Service und Netzwerk"
 echo "----------------------------"
 
 info "systemd-Service wird eingerichtet..."
@@ -247,6 +348,20 @@ server {
     listen 80;
     server_name $DOMAIN;
 
+    location = /pgadmin4 {
+        return 301 /pgadmin4/;
+    }
+
+    location /pgadmin4/ {
+        proxy_pass http://unix:$PGADMIN_SOCKET_DIR/pgadmin4.sock;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Script-Name /pgadmin4;
+        proxy_set_header X-Scheme \$scheme;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
@@ -279,9 +394,11 @@ NGINXEOF
   fi
 
   ACCESS_URL="https://$DOMAIN"
+  PGADMIN_ACCESS_URL="https://$DOMAIN/pgadmin4"
 else
   SERVER_IP=$(hostname -I | awk '{print $1}')
   ACCESS_URL="http://$SERVER_IP:3000"
+  PGADMIN_ACCESS_URL="nur mit Domain-Setup (Reverse Proxy) erreichbar"
 fi
 
 mkdir -p "$INSTALL_DIR/plugins"
@@ -295,6 +412,11 @@ echo ""
 echo "  Admin-Benutzer:"
 echo "    Benutzername: admin"
 echo "    Passwort:     $ADMIN_PASSWORD"
+echo ""
+echo "  pgAdmin 4:"
+echo "    URL:          $PGADMIN_ACCESS_URL"
+echo "    Benutzername: $PGADMIN_ADMIN_EMAIL"
+echo "    Passwort:     $PGADMIN_ADMIN_PASSWORD"
 echo ""
 echo "  WICHTIG: Dieses Passwort wird nur"
 echo "  einmal angezeigt! Bitte jetzt notieren."

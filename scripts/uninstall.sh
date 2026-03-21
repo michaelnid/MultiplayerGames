@@ -6,6 +6,11 @@ SERVICE_NAME="mike-games"
 SERVICE_USER="mike-games"
 DB_NAME="mike_games"
 DB_USER="mike_games"
+PGADMIN_DIR="/opt/mike-pgadmin4"
+PGADMIN_SERVICE_NAME="mike-pgadmin4"
+PGADMIN_SERVICE_USER="mike-pgadmin4"
+PGADMIN_DATA_DIR="/var/lib/mike-pgadmin4"
+PGADMIN_LOG_DIR="/var/log/mike-pgadmin4"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -55,6 +60,9 @@ info "Service wird gestoppt..."
 systemctl stop "$SERVICE_NAME" 2>/dev/null || true
 systemctl disable "$SERVICE_NAME" 2>/dev/null || true
 rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
+systemctl stop "$PGADMIN_SERVICE_NAME" 2>/dev/null || true
+systemctl disable "$PGADMIN_SERVICE_NAME" 2>/dev/null || true
+rm -f "/etc/systemd/system/${PGADMIN_SERVICE_NAME}.service"
 systemctl daemon-reload
 success "Service entfernt"
 
@@ -89,6 +97,7 @@ fi
 
 info "Dateien werden entfernt..."
 rm -rf "$INSTALL_DIR"
+rm -rf "$PGADMIN_DIR" "$PGADMIN_DATA_DIR" "$PGADMIN_LOG_DIR"
 success "Dateien entfernt"
 
 DEL_SERVICE_USER=""
@@ -99,6 +108,17 @@ if [[ "$DEL_SERVICE_USER" == "j" || "$DEL_SERVICE_USER" == "J" ]]; then
     success "Systembenutzer entfernt"
   else
     info "Systembenutzer nicht vorhanden, übersprungen."
+  fi
+fi
+
+DEL_PGADMIN_USER=""
+ask "Systembenutzer $PGADMIN_SERVICE_USER ebenfalls entfernen? (j/n)" DEL_PGADMIN_USER
+if [[ "$DEL_PGADMIN_USER" == "j" || "$DEL_PGADMIN_USER" == "J" ]]; then
+  if id -u "$PGADMIN_SERVICE_USER" > /dev/null 2>&1; then
+    userdel "$PGADMIN_SERVICE_USER" 2>/dev/null || true
+    success "pgAdmin-Systembenutzer entfernt"
+  else
+    info "pgAdmin-Systembenutzer nicht vorhanden, übersprungen."
   fi
 fi
 
