@@ -3,6 +3,7 @@ import type { Server } from 'socket.io';
 import { db } from '../db/knex.js';
 import { requireAuth, requireGameMasterOrAdmin } from '../auth/middleware.js';
 import { generateLobbyCode } from '../lobby/code-generator.js';
+import { parseJsonValue } from '../utils/json.js';
 
 let io: Server | null = null;
 
@@ -11,6 +12,12 @@ export function setLobbyIO(ioInstance: Server) {
 }
 
 export async function lobbyRoutes(fastify: FastifyInstance) {
+  const parseNumericSetting = (value: unknown, fallback: number): number => {
+    const parsed = parseJsonValue(value);
+    const num = Number(parsed);
+    return Number.isFinite(num) ? num : fallback;
+  };
+
   fastify.get('/', { preHandler: requireAuth }, async () => {
     const lobbies = await db('lobbies')
       .whereIn('status', ['wartend', 'laeuft'])
@@ -75,7 +82,7 @@ export async function lobbyRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ success: false, error: 'Spiel nicht gefunden oder deaktiviert' });
     }
 
-    const manifest = typeof plugin.manifest === 'string' ? JSON.parse(plugin.manifest) : plugin.manifest;
+    const manifest = parseJsonValue(plugin.manifest) as Record<string, unknown>;
     const code = await generateLobbyCode(db);
 
     // Plugin-Settings lesen (ueberschreiben Manifest-Werte)
@@ -86,8 +93,24 @@ export async function lobbyRoutes(fastify: FastifyInstance) {
       .where({ plugin_id: plugin.id, key: 'settings:maxPlayers' })
       .first();
 
-    const effectiveMin = minSetting?.value != null ? Number(JSON.parse(minSetting.value)) : (manifest.minPlayers || 2);
-    const effectiveMax = maxSetting?.value != null ? Number(JSON.parse(maxSetting.value)) : (manifest.maxPlayers || 8);
+    const manifestMin = Number(manifest.minPlayers);
+    const manifestMax = Number(manifest.maxPlayers);
+
+    const fallbackMin = Number.isFinite(manifestMin) && manifestMin >= 1 ? manifestMin : 2;
+    const fallbackMax = Number.isFinite(manifestMax) && manifestMax >= fallbackMin ? manifestMax : Math.max(8, fallbackMin);
+
+    const effectiveMin = minSetting?.value != null ? parseNumericSetting(minSetting.value, fallbackMin) : fallbackMin;
+    const effectiveMax = maxSetting?.value != null ? parseNumericSetting(maxSetting.value, fallbackMax) : fallbackMax;
+
+    const boundedMin = Math.max(1, Math.floor(effectiveMin));
+    const boundedMax = Math.max(boundedMin, Math.floor(effectiveMax));
+
+    if (maxPlayers !== undefined && (maxPlayers < boundedMin || maxPlayers > boundedMax)) {
+      return reply.status(400).send({
+        success: false,
+        error: `maxPlayers muss zwischen ${boundedMin} und ${boundedMax} liegen`,
+      });
+    }
 
     const [lobby] = await db('lobbies')
       .insert({
@@ -95,8 +118,8 @@ export async function lobbyRoutes(fastify: FastifyInstance) {
         created_by: userId,
         code,
         status: 'wartend',
-        max_players: maxPlayers || effectiveMax,
-        min_players: effectiveMin,
+        max_players: maxPlayers ?? boundedMax,
+        min_players: boundedMin,
       })
       .returning('*');
 

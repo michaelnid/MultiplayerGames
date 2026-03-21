@@ -5,6 +5,18 @@ import crypto from 'node:crypto';
 const ISSUER = 'MIKE Games';
 const BACKUP_CODE_COUNT = 8;
 
+function normalizeBackupCode(code: string): string {
+  return code.toUpperCase().replace(/\s/g, '').replace(/-/g, '');
+}
+
+function hashBackupCode(code: string): string {
+  return crypto.createHash('sha256').update(normalizeBackupCode(code)).digest('hex');
+}
+
+function isSha256Hash(value: string): boolean {
+  return /^[a-f0-9]{64}$/i.test(value);
+}
+
 export function generateTOTPSecret(username: string): { secret: string; uri: string } {
   const totp = new OTPAuth.TOTP({
     issuer: ISSUER,
@@ -50,15 +62,27 @@ export function generateBackupCodes(): string[] {
   return codes;
 }
 
+export function hashBackupCodes(codes: string[]): string[] {
+  return codes.map(hashBackupCode);
+}
+
 export function verifyBackupCode(storedCodes: string[], inputCode: string): { valid: boolean; remaining: string[] } {
-  const normalized = inputCode.toUpperCase().replace(/\s/g, '');
-  const index = storedCodes.findIndex((c) => c.replace(/-/g, '') === normalized.replace(/-/g, ''));
+  const normalizedInput = normalizeBackupCode(inputCode);
+  const hashedInput = hashBackupCode(inputCode);
+  const index = storedCodes.findIndex((stored) => {
+    if (isSha256Hash(stored)) {
+      return stored.toLowerCase() === hashedInput.toLowerCase();
+    }
+    return normalizeBackupCode(stored) === normalizedInput;
+  });
 
   if (index === -1) {
     return { valid: false, remaining: storedCodes };
   }
 
-  const remaining = [...storedCodes];
-  remaining.splice(index, 1);
+  // Legacy-Klartextcodes werden bei erfolgreicher Verwendung auf Hashes migriert.
+  const remaining = storedCodes
+    .filter((_, i) => i !== index)
+    .map((entry) => (isSha256Hash(entry) ? entry.toLowerCase() : hashBackupCode(entry)));
   return { valid: true, remaining };
 }

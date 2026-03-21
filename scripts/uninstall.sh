@@ -3,6 +3,7 @@ set -euo pipefail
 
 INSTALL_DIR="/opt/mike-games"
 SERVICE_NAME="mike-games"
+SERVICE_USER="mike-games"
 DB_NAME="mike_games"
 DB_USER="mike_games"
 
@@ -89,6 +90,17 @@ fi
 info "Dateien werden entfernt..."
 rm -rf "$INSTALL_DIR"
 success "Dateien entfernt"
+
+DEL_SERVICE_USER=""
+ask "Systembenutzer $SERVICE_USER ebenfalls entfernen? (j/n)" DEL_SERVICE_USER
+if [[ "$DEL_SERVICE_USER" == "j" || "$DEL_SERVICE_USER" == "J" ]]; then
+  if id -u "$SERVICE_USER" > /dev/null 2>&1; then
+    userdel "$SERVICE_USER" 2>/dev/null || true
+    success "Systembenutzer entfernt"
+  else
+    info "Systembenutzer nicht vorhanden, uebersprungen."
+  fi
+fi
 
 echo ""
 echo "========================================"

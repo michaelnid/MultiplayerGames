@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 import type { Server } from 'socket.io';
+import { parseJsonValue } from '../utils/json.js';
 
 export interface PluginContext {
   slug: string;
@@ -188,7 +189,10 @@ export function createPluginContext(
         const row = await db('plugin_settings')
           .where({ plugin_id: pluginId, key: `storage:${fullKey}` })
           .first();
-        return row?.value ?? null;
+        if (!row) {
+          return null;
+        }
+        return parseJsonValue(row.value);
       },
 
       async set(key, value, lobbyId) {
@@ -217,7 +221,10 @@ export function createPluginContext(
         const row = await db('plugin_settings')
           .where({ plugin_id: pluginId, key: `settings:${key}` })
           .first();
-        return row?.value ?? null;
+        if (!row) {
+          return null;
+        }
+        return parseJsonValue(row.value);
       },
 
       async set(key, value) {
@@ -247,7 +254,7 @@ export function createPluginContext(
         const result: Record<string, unknown> = {};
         for (const row of rows) {
           const key = row.key.replace('settings:', '');
-          result[key] = row.value;
+          result[key] = parseJsonValue(row.value);
         }
         return result;
       },

@@ -29,10 +29,27 @@
           />
         </div>
 
+        <div v-if="requiresTOTP" class="form-group">
+          <label for="totpCode">2FA-Code oder Backup-Code</label>
+          <input
+            id="totpCode"
+            v-model="totpCode"
+            type="text"
+            autocomplete="one-time-code"
+            required
+            :disabled="loading"
+            placeholder="123456 oder ABCD-1234"
+          />
+        </div>
+
+        <p v-if="requiresTOTP && !error" class="info-msg">
+          Bitte gib den aktuellen 2FA-Code ein. Alternativ kannst du einen Backup-Code verwenden.
+        </p>
+
         <p v-if="error" class="error-msg">{{ error }}</p>
 
         <button type="submit" class="btn-primary login-btn" :disabled="loading">
-          {{ loading ? 'Anmelden...' : 'Anmelden' }}
+          {{ loading ? 'Anmelden...' : (requiresTOTP ? '2FA bestaetigen' : 'Anmelden') }}
         </button>
       </form>
     </div>
@@ -49,16 +66,33 @@ const router = useRouter();
 
 const username = ref('');
 const password = ref('');
+const totpCode = ref('');
 const error = ref('');
 const loading = ref(false);
+const requiresTOTP = ref(false);
 
 async function handleLogin() {
   error.value = '';
   loading.value = true;
   try {
-    await auth.login(username.value, password.value);
+    const result = await auth.login(
+      username.value,
+      password.value,
+      requiresTOTP.value ? totpCode.value : undefined,
+    );
+
+    if (result.data?.requiresTOTP) {
+      requiresTOTP.value = true;
+      return;
+    }
+
+    requiresTOTP.value = false;
+    totpCode.value = '';
     router.push('/');
   } catch (e) {
+    if (!requiresTOTP.value) {
+      totpCode.value = '';
+    }
     error.value = e instanceof Error ? e.message : 'Anmeldung fehlgeschlagen';
   } finally {
     loading.value = false;
@@ -107,6 +141,12 @@ async function handleLogin() {
 
 .error-msg {
   color: var(--color-danger);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.info-msg {
+  color: var(--color-text-muted);
   font-size: 0.85rem;
   text-align: center;
 }

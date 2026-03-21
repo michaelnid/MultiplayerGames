@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { db } from '../db/knex.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
 import { requireAuth, requireAdmin } from '../auth/middleware.js';
@@ -8,9 +8,24 @@ import {
   verifyTOTP,
   generateQRCodeDataURL,
   generateBackupCodes,
+  hashBackupCodes,
   verifyBackupCode,
 } from '../auth/totp.js';
 import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from '@mike-games/shared';
+import { issueSocketAuthToken } from '../ws/auth-token.js';
+import { parseStringArray } from '../utils/json.js';
+
+async function regenerateSession(request: FastifyRequest): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    request.session.regenerate((err: unknown) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve();
+    });
+  });
+}
 
 export async function authRoutes(fastify: FastifyInstance) {
   fastify.post<{
@@ -57,7 +72,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 
       const totpValid = verifyTOTP(user.totp_secret, totpCode);
       if (!totpValid) {
-        const backupCodes: string[] = user.backup_codes ? JSON.parse(user.backup_codes) : [];
+        const backupCodes = parseStringArray(user.backup_codes);
         const backupResult = verifyBackupCode(backupCodes, totpCode);
 
         if (!backupResult.valid) {
@@ -69,6 +84,12 @@ export async function authRoutes(fastify: FastifyInstance) {
           backup_codes: JSON.stringify(backupResult.remaining),
         });
       }
+    }
+
+    try {
+      await regenerateSession(request);
+    } catch {
+      return reply.status(500).send({ success: false, error: 'Sitzung konnte nicht aktualisiert werden' });
     }
 
     request.session.userId = user.id;
@@ -122,6 +143,30 @@ export async function authRoutes(fastify: FastifyInstance) {
         role: user.role,
         totpEnabled: user.totp_enabled,
         createdAt: user.created_at,
+      },
+    };
+  });
+
+  fastify.get('/socket-token', { preHandler: requireAuth }, async (request) => {
+    const userId = request.session.userId!;
+    const username = request.session.username;
+
+    if (!username) {
+      const user = await db('users').where('id', userId).select('username').first();
+      if (!user?.username) {
+        return { success: false, error: 'Benutzer nicht gefunden' };
+      }
+      request.session.username = user.username;
+    }
+
+    const token = issueSocketAuthToken(userId, request.session.username!);
+
+    return {
+      success: true,
+      data: {
+        token,
+        userId,
+        username: request.session.username,
       },
     };
   });
@@ -211,11 +256,12 @@ export async function authRoutes(fastify: FastifyInstance) {
     }
 
     const backupCodes = generateBackupCodes();
+    const backupCodeHashes = hashBackupCodes(backupCodes);
 
     await db('users').where('id', userId).update({
       totp_enabled: true,
       totp_secret: pendingSecret,
-      backup_codes: JSON.stringify(backupCodes),
+      backup_codes: JSON.stringify(backupCodeHashes),
       updated_at: db.fn.now(),
     });
 

@@ -1,7 +1,15 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { api } from '../api/client.js';
-import type { User } from '@mike-games/shared';
+import type { ApiResponse, User } from '@mike-games/shared';
+
+interface LoginResponseData {
+  requiresTOTP?: boolean;
+  id?: string;
+  username?: string;
+  role?: User['role'];
+  totpEnabled?: boolean;
+}
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
@@ -24,9 +32,17 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(username: string, password: string, totpCode?: string) {
-    const result = await api.post<User>('/auth/login', { username, password, totpCode });
-    user.value = result.data ?? null;
+    const result = await api.post<LoginResponseData>('/auth/login', { username, password, totpCode });
+    if (result.data?.requiresTOTP) {
+      user.value = null;
+      return result;
+    }
+    await checkSession();
     return result;
+  }
+
+  async function createSocketToken(): Promise<ApiResponse<{ token: string; userId: string; username: string }>> {
+    return api.get<{ token: string; userId: string; username: string }>('/auth/socket-token');
   }
 
   async function logout() {
@@ -50,6 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
     isGameMaster,
     checkSession,
     login,
+    createSocketToken,
     logout,
     changePassword,
   };

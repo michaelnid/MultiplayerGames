@@ -1,10 +1,12 @@
 import type { FastifyInstance } from 'fastify';
+import type { PluginManifest } from '@mike-games/shared';
 import { db } from '../db/knex.js';
 import { requireAdmin, requireAuth } from '../auth/middleware.js';
 import { logAudit } from '../auth/audit.js';
 import { installPlugin, uninstallPlugin, loadPluginBackend, unloadPlugin, getLoadedPlugins } from '../plugin-system/loader.js';
 import { config } from '../config.js';
 import path from 'node:path';
+import { parseJsonObject, parseJsonValue } from '../utils/json.js';
 
 let ioRef: any = null;
 
@@ -23,7 +25,7 @@ export async function pluginRoutes(fastify: FastifyInstance) {
         name: p.name,
         version: p.version,
         author: p.author,
-        manifest: typeof p.manifest === 'string' ? JSON.parse(p.manifest) : p.manifest,
+        manifest: parseJsonObject(p.manifest),
         enabled: p.enabled,
         installedAt: p.installed_at,
       })),
@@ -40,7 +42,7 @@ export async function pluginRoutes(fastify: FastifyInstance) {
         name: p.name,
         version: p.version,
         author: p.author,
-        manifest: typeof p.manifest === 'string' ? JSON.parse(p.manifest) : p.manifest,
+        manifest: parseJsonObject(p.manifest),
         enabled: p.enabled,
         installedAt: p.installed_at,
       })),
@@ -93,7 +95,7 @@ export async function pluginRoutes(fastify: FastifyInstance) {
 
       if (enabled && !getLoadedPlugins().has(plugin.slug)) {
         try {
-          const manifest = typeof plugin.manifest === 'string' ? JSON.parse(plugin.manifest) : plugin.manifest;
+          const manifest = parseJsonObject(plugin.manifest) as unknown as PluginManifest;
           const pluginDir = path.join(config.plugins.directory, plugin.slug);
           await loadPluginBackend(id, manifest, pluginDir, db, ioRef, fastify);
         } catch (err) {
@@ -149,7 +151,7 @@ export async function pluginRoutes(fastify: FastifyInstance) {
 
     const result: Record<string, unknown> = {};
     for (const row of settings) {
-      result[row.key.replace('settings:', '')] = row.value;
+      result[row.key.replace('settings:', '')] = parseJsonValue(row.value);
     }
 
     return { success: true, data: result };

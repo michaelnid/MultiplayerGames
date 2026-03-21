@@ -23,16 +23,19 @@ import { startLobbyTimeoutChecker, stopLobbyTimeoutChecker } from './lobby/timeo
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function start() {
+  const isDevelopment = config.env === 'development';
+  const allowedDomainOrigin = config.domain ? `https://${config.domain}` : null;
+
   const fastify = Fastify({
     logger: {
-      level: config.env === 'development' ? 'info' : 'warn',
+      level: isDevelopment ? 'info' : 'warn',
     },
     trustProxy: true,
   });
 
   await fastify.register(fastifyCors, {
-    origin: config.env === 'development' ? true : (config.domain ? `https://${config.domain}` : true),
-    credentials: true,
+    origin: isDevelopment ? true : (allowedDomainOrigin ? [allowedDomainOrigin] : false),
+    credentials: isDevelopment || !!allowedDomainOrigin,
   });
 
   await fastify.register(fastifyCookie);
@@ -95,13 +98,23 @@ async function start() {
 
   await fastify.ready();
 
-  const io = new Server(fastify.server, {
-    cors: {
-      origin: config.env === 'development' ? true : (config.domain ? `https://${config.domain}` : true),
-      credentials: true,
-    },
+  const ioOptions: ConstructorParameters<typeof Server>[1] = {
     path: '/ws/',
-  });
+  };
+
+  if (isDevelopment) {
+    ioOptions.cors = {
+      origin: true,
+      credentials: true,
+    };
+  } else if (allowedDomainOrigin) {
+    ioOptions.cors = {
+      origin: [allowedDomainOrigin],
+      credentials: true,
+    };
+  }
+
+  const io = new Server(fastify.server, ioOptions);
 
   setPluginIO(io);
   setLobbyIO(io);

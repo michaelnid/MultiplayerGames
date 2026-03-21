@@ -24,13 +24,19 @@ Webbasiertes Multiplayer-Game-System mit Plugin-Architektur. Spiele werden als Z
 curl -sSL https://raw.githubusercontent.com/michaelnid/MultiplayerGames/main/scripts/install.sh | sudo bash
 ```
 
-Das Script fuehrt interaktiv durch die Einrichtung (Domain/SSL, Admin-Benutzer).
+Das Script fuehrt interaktiv durch die Einrichtung (Domain/SSL, Admin-Benutzer) und:
+
+- erstellt einen dedizierten Systembenutzer `mike-games` fuer den Servicebetrieb,
+- konfiguriert bei Domainbetrieb Reverse Proxy + Let's Encrypt,
+- setzt bei IP-only Betrieb `HOST=0.0.0.0` fuer direkten Zugriff auf Port `3000`.
 
 ## Update
 
 ```bash
 sudo /opt/mike-games/scripts/update.sh
 ```
+
+Das Update-Skript migriert bestehende Installationen ebenfalls auf den sicheren Service-Benutzerbetrieb.
 
 ## Deinstallation
 
@@ -52,6 +58,14 @@ npm run dev
 ```
 
 Voraussetzung: Lokale PostgreSQL-Instanz mit Datenbank `mike_games`. `.env` Datei anlegen (siehe `.env.example`).
+
+Optionales Admin-Seed (lokal):
+
+```bash
+DEFAULT_ADMIN_PASSWORD='SicheresPasswort123' npm run seed --workspace=backend
+```
+
+Ohne `DEFAULT_ADMIN_PASSWORD` legt der Seed **keinen** Default-Admin an.
 
 ## Plugin-Entwicklung
 

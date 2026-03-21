@@ -3,6 +3,7 @@ set -euo pipefail
 
 INSTALL_DIR="/opt/mike-games"
 SERVICE_NAME="mike-games"
+SERVICE_USER="mike-games"
 DB_NAME="mike_games"
 DB_USER="mike_games"
 REPO_URL="https://github.com/michaelnid/MultiplayerGames.git"
@@ -25,6 +26,11 @@ ask() {
   echo -en "${CYAN}>>>${NC} ${prompt} " > /dev/tty
   read -r input < /dev/tty
   eval "$var_name=\"\$input\""
+}
+
+run_as_service() {
+  local cmd="$1"
+  su -s /bin/bash -c "$cmd" "$SERVICE_USER"
 }
 
 echo ""
@@ -82,6 +88,7 @@ echo ""
 
 USE_DOMAIN=""
 DOMAIN=""
+APP_HOST="0.0.0.0"
 
 ask "Soll das System ueber eine Domain erreichbar sein? (j/n)" USE_DOMAIN
 
@@ -92,8 +99,10 @@ if [[ "$USE_DOMAIN" == "j" || "$USE_DOMAIN" == "J" ]]; then
   fi
   info "Domain: $DOMAIN"
   info "Nginx und SSL werden nach der Installation eingerichtet."
+  APP_HOST="127.0.0.1"
 else
   info "System wird nur ueber IP erreichbar sein (Port 3000)."
+  APP_HOST="0.0.0.0"
 fi
 
 # ================================
@@ -101,8 +110,17 @@ echo ""
 echo "[3/6] Repository und Datenbank"
 echo "----------------------------"
 
+info "Service-Benutzer wird eingerichtet..."
+if ! id -u "$SERVICE_USER" > /dev/null 2>&1; then
+  useradd --system --home "$INSTALL_DIR" --shell /usr/sbin/nologin "$SERVICE_USER"
+  success "Service-Benutzer $SERVICE_USER erstellt"
+else
+  success "Service-Benutzer $SERVICE_USER bereits vorhanden"
+fi
+
 info "Repository wird geklont..."
 git clone --depth 1 "$REPO_URL" "$INSTALL_DIR" > /dev/null 2>&1 || fail "Repository konnte nicht geklont werden."
+chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
 success "Repository geklont nach $INSTALL_DIR"
 
 info "Datenbank wird eingerichtet..."
@@ -120,7 +138,7 @@ SESSION_SECRET=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 48)
 cat > "$INSTALL_DIR/.env" << EOF
 NODE_ENV=production
 PORT=3000
-HOST=127.0.0.1
+HOST=$APP_HOST
 
 DB_HOST=127.0.0.1
 DB_PORT=5432
@@ -136,6 +154,7 @@ CORE_VERSION=1.0.0
 EOF
 
 chmod 600 "$INSTALL_DIR/.env"
+chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/.env"
 success ".env generiert"
 
 # ================================
@@ -144,42 +163,35 @@ echo "[4/6] Build"
 echo "----------------------------"
 
 info "Abhaengigkeiten werden installiert..."
-cd "$INSTALL_DIR"
-npm install --production=false > /dev/null 2>&1 || fail "npm install fehlgeschlagen."
+if ! run_as_service "cd '$INSTALL_DIR' && npm install --production=false > /dev/null 2>&1"; then
+  fail "npm install fehlgeschlagen."
+fi
 success "Abhaengigkeiten installiert"
 
 info "Shared Types werden gebaut..."
-set +e
-npx tsc --build shared/tsconfig.json --force 2>&1
-if [ $? -ne 0 ]; then fail "Shared Types Build fehlgeschlagen."; fi
-set -e
+if ! run_as_service "cd '$INSTALL_DIR' && npx tsc --build shared/tsconfig.json --force > /dev/null 2>&1"; then
+  fail "Shared Types Build fehlgeschlagen."
+fi
 success "Shared Types gebaut"
 
 info "Datenbank-Migrationen werden ausgefuehrt..."
-cd "$INSTALL_DIR/backend"
-set +e
-npx tsx ../node_modules/.bin/knex migrate:latest --knexfile knexfile.ts > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-  npx tsx ./node_modules/.bin/knex migrate:latest --knexfile knexfile.ts 2>&1
-  if [ $? -ne 0 ]; then fail "Datenbank-Migrationen fehlgeschlagen."; fi
+if ! run_as_service "cd '$INSTALL_DIR/backend' && npx tsx ../node_modules/.bin/knex migrate:latest --knexfile knexfile.ts > /dev/null 2>&1"; then
+  if ! run_as_service "cd '$INSTALL_DIR/backend' && npx tsx ./node_modules/.bin/knex migrate:latest --knexfile knexfile.ts > /dev/null 2>&1"; then
+    fail "Datenbank-Migrationen fehlgeschlagen."
+  fi
 fi
-set -e
 success "Migrationen ausgefuehrt"
 
 info "Backend wird gebaut..."
-cd "$INSTALL_DIR/backend"
-set +e
-npx tsc 2>&1
-if [ $? -ne 0 ]; then fail "Backend Build fehlgeschlagen. Siehe Fehlerausgabe oben."; fi
-set -e
+if ! run_as_service "cd '$INSTALL_DIR/backend' && npx tsc > /dev/null 2>&1"; then
+  fail "Backend Build fehlgeschlagen."
+fi
 success "Backend gebaut"
 
 info "Frontend wird gebaut..."
-cd "$INSTALL_DIR/frontend"
-set +e
-npx vite build 2>&1
-if [ $? -ne 0 ]; then fail "Frontend Build fehlgeschlagen. Siehe Fehlerausgabe oben."; fi
-set -e
+if ! run_as_service "cd '$INSTALL_DIR/frontend' && npx vite build > /dev/null 2>&1"; then
+  fail "Frontend Build fehlgeschlagen."
+fi
 success "Frontend gebaut"
 
 # ================================
@@ -190,9 +202,8 @@ echo "----------------------------"
 ADMIN_PASSWORD=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 12)
 
 info "Admin-Benutzer wird erstellt..."
-cd "$INSTALL_DIR/backend"
-if ! npx tsx src/db/create-admin.ts "$ADMIN_PASSWORD" 2>&1; then
-  fail "Admin-Benutzer konnte nicht erstellt werden. Siehe Fehlerausgabe oben."
+if ! run_as_service "cd '$INSTALL_DIR/backend' && npx tsx src/db/create-admin.ts '$ADMIN_PASSWORD' > /dev/null 2>&1"; then
+  fail "Admin-Benutzer konnte nicht erstellt werden."
 fi
 success "Admin-Benutzer erstellt"
 
@@ -209,7 +220,8 @@ After=network.target postgresql.service
 
 [Service]
 Type=simple
-User=root
+User=$SERVICE_USER
+Group=$SERVICE_USER
 WorkingDirectory=$INSTALL_DIR
 ExecStart=/usr/bin/node $INSTALL_DIR/backend/dist/server.js
 Restart=on-failure
@@ -272,6 +284,7 @@ else
 fi
 
 mkdir -p "$INSTALL_DIR/plugins"
+chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/plugins"
 
 echo ""
 echo "========================================"

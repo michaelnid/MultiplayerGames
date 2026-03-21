@@ -19,6 +19,53 @@ interface LoadedPlugin {
 const loadedPlugins = new Map<string, LoadedPlugin>();
 const dispatchByPluginId = new Map<string, PluginDispatch>();
 
+function resolvePluginPath(pluginDir: string, relativePath: string, label: string): string {
+  const basePath = path.resolve(pluginDir);
+  const resolvedPath = path.resolve(basePath, relativePath);
+
+  if (resolvedPath !== basePath && !resolvedPath.startsWith(`${basePath}${path.sep}`)) {
+    throw new Error(`${label} enthaelt einen ungueltigen Pfad: ${relativePath}`);
+  }
+
+  return resolvedPath;
+}
+
+function sanitizeZipEntryName(entryName: string): string {
+  const normalized = entryName.replace(/\\/g, '/');
+  if (!normalized || normalized.startsWith('/') || normalized.includes('\0')) {
+    throw new Error(`Ungueltiger ZIP-Eintrag: ${entryName}`);
+  }
+
+  const safeName = path.posix.normalize(normalized);
+  if (safeName === '..' || safeName.startsWith('../')) {
+    throw new Error(`Unsicherer ZIP-Pfad: ${entryName}`);
+  }
+
+  return safeName;
+}
+
+async function extractPluginZip(zip: AdmZip, pluginDir: string) {
+  const basePath = path.resolve(pluginDir);
+  await fs.mkdir(basePath, { recursive: true });
+
+  for (const entry of zip.getEntries()) {
+    const safeName = sanitizeZipEntryName(entry.entryName);
+    const targetPath = path.resolve(basePath, safeName);
+
+    if (targetPath !== basePath && !targetPath.startsWith(`${basePath}${path.sep}`)) {
+      throw new Error(`Unsicherer ZIP-Pfad: ${entry.entryName}`);
+    }
+
+    if (entry.isDirectory) {
+      await fs.mkdir(targetPath, { recursive: true });
+      continue;
+    }
+
+    await fs.mkdir(path.dirname(targetPath), { recursive: true });
+    await fs.writeFile(targetPath, entry.getData());
+  }
+}
+
 export function getLoadedPlugins() {
   return loadedPlugins;
 }
@@ -63,11 +110,18 @@ export async function installPlugin(
   const pluginDir = path.join(config.plugins.directory, manifest.slug);
 
   try {
-    await fs.mkdir(pluginDir, { recursive: true });
-    zip.extractAllTo(pluginDir, true);
+    await extractPluginZip(zip, pluginDir);
   } catch (err) {
     await fs.rm(pluginDir, { recursive: true, force: true });
     throw new Error('Fehler beim Entpacken des Plugins');
+  }
+
+  const frontendEntry = resolvePluginPath(pluginDir, manifest.frontend.entry, 'Frontend-Einstiegspunkt');
+  try {
+    await fs.access(frontendEntry);
+  } catch {
+    await fs.rm(pluginDir, { recursive: true, force: true });
+    throw new Error(`Frontend-Einstiegspunkt nicht gefunden: ${manifest.frontend.entry}`);
   }
 
   const [plugin] = await db('plugins')
@@ -98,7 +152,7 @@ export async function loadPluginBackend(
   io: Server,
   fastify: FastifyInstance,
 ) {
-  const backendEntry = path.join(pluginDir, manifest.backend.entry);
+  const backendEntry = resolvePluginPath(pluginDir, manifest.backend.entry, 'Backend-Einstiegspunkt');
 
   try {
     await fs.access(backendEntry);

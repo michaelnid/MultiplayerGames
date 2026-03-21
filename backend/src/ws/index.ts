@@ -2,6 +2,7 @@ import type { Server, Socket } from 'socket.io';
 import type { Knex } from 'knex';
 import { WS_EVENTS } from '@mike-games/shared';
 import { getPluginDispatch } from '../plugin-system/loader.js';
+import { consumeSocketAuthToken } from './auth-token.js';
 
 interface SocketData {
   userId?: string;
@@ -14,11 +15,26 @@ export function setupWebSocket(io: Server, db: Knex) {
   io.on('connection', (socket: Socket) => {
     const data: SocketData = {};
 
-    socket.on('auth', async (payload: { userId: string; username: string }) => {
-      if (!payload.userId || !payload.username) return;
+    socket.on('auth', async (payload: { token?: string }) => {
+      if (!payload?.token) {
+        socket.emit('auth:error', { message: 'Authentifizierung fehlgeschlagen' });
+        return;
+      }
 
-      const user = await db('users').where('id', payload.userId).first();
-      if (!user) return;
+      const tokenData = consumeSocketAuthToken(payload.token);
+      if (!tokenData) {
+        socket.emit('auth:error', { message: 'Token ungueltig oder abgelaufen' });
+        return;
+      }
+
+      const user = await db('users')
+        .where('id', tokenData.userId)
+        .andWhere('username', tokenData.username)
+        .first();
+      if (!user) {
+        socket.emit('auth:error', { message: 'Authentifizierung fehlgeschlagen' });
+        return;
+      }
 
       data.userId = user.id;
       data.username = user.username;
