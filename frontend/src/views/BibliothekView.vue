@@ -327,7 +327,7 @@ onMounted(async () => {
 
 .detail-cover-area {
   width: 100%;
-  aspect-ratio: 3 / 1;
+  aspect-ratio: 16 / 9;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   overflow: hidden;
   line-height: 0;
@@ -339,7 +339,7 @@ onMounted(async () => {
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: contain;
+  object-fit: cover;
   background-color: var(--color-bg);
 }
 
@@ -441,7 +441,7 @@ onMounted(async () => {
   }
 
   .detail-card {
-    max-width: 440px;
+    max-width: 380px;
   }
 
   .detail-content {
@@ -512,7 +512,7 @@ onMounted(async () => {
   }
 
   .detail-cover-area {
-    aspect-ratio: 3 / 1;
+    aspect-ratio: 16 / 9;
   }
 
   .detail-content {

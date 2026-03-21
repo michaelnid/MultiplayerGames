@@ -203,7 +203,7 @@ Empfohlene Laenge für `frontend.bibliothek.description`: 300-1200 Zeichen.
 - Optional kann `frontend.bibliothek.coverImage` (PNG/JPG/SVG) gesetzt werden. Dieses Bild wird gross in der Detailansicht der Bibliothek angezeigt.
 - Cover-Bilder dürfen **keinen Text** enthalten (kein Spieltitel, keine Untertitel, keine Labels). Titel und Beschreibung werden vom Core bereits separat angezeigt.
 - Cover-SVGs müssen vollständig innerhalb der `viewBox` gezeichnet sein. Elemente, die über die `viewBox` hinausgehen, werden sichtbar abgeschnitten.
-- Empfohlen für Cover: Seitenverhältnis 16:9 (z.B. 1280x720 oder 640x360) und ein Sicherheitsrand von mindestens 5 Prozent pro Seite für wichtige Inhalte.
+- **Pflicht** fuer Cover: Seitenverhältnis **16:9** (z.B. 1280x720 oder 640x360). Quadratische oder hochformatige Bilder werden im Banner-Bereich abgeschnitten (`object-fit: cover`). Ein Sicherheitsrand von mindestens 5 Prozent pro Seite fuer wichtige Inhalte ist empfohlen.
 
 ### Validierung bei Installation
 
