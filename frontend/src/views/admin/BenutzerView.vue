@@ -59,6 +59,10 @@
           <label>2FA ist aktiv</label>
           <button type="button" class="btn-danger btn-sm" @click="requestDisable2FA">2FA deaktivieren</button>
         </div>
+        <div class="form-group totp-section">
+          <label>Statistik</label>
+          <button type="button" class="btn-danger btn-sm" @click="requestResetStats">Statistik zuruecksetzen</button>
+        </div>
         <div class="form-actions">
           <button type="submit" class="btn-primary">Speichern</button>
           <button type="button" class="btn-secondary" @click="editUser = null">Abbrechen</button>
@@ -129,7 +133,7 @@ const editData = ref({ username: '', role: '' as UserRole, password: '' });
 const editError = ref('');
 const editSuccess = ref('');
 const showConfirmModal = ref(false);
-const confirmType = ref<'disable2fa' | 'delete-user' | null>(null);
+const confirmType = ref<'disable2fa' | 'delete-user' | 'reset-stats' | null>(null);
 const confirmTargetId = ref('');
 const confirmTargetUsername = ref('');
 const confirmBusy = ref(false);
@@ -137,6 +141,7 @@ const confirmBusy = ref(false);
 const confirmModalTitle = computed(() => {
   if (confirmType.value === 'disable2fa') return '2FA deaktivieren';
   if (confirmType.value === 'delete-user') return 'Benutzer löschen';
+  if (confirmType.value === 'reset-stats') return 'Statistik zuruecksetzen';
   return 'Bestätigung';
 });
 
@@ -147,12 +152,16 @@ const confirmModalMessage = computed(() => {
   if (confirmType.value === 'delete-user') {
     return `Benutzer "${confirmTargetUsername.value}" wirklich löschen?`;
   }
+  if (confirmType.value === 'reset-stats') {
+    return `Alle Statistiken (Siege, Niederlagen, Punkte) von "${confirmTargetUsername.value}" wirklich zuruecksetzen? Dies kann nicht rueckgaengig gemacht werden.`;
+  }
   return '';
 });
 
 const confirmModalConfirmText = computed(() => {
   if (confirmType.value === 'disable2fa') return '2FA deaktivieren';
   if (confirmType.value === 'delete-user') return 'Löschen';
+  if (confirmType.value === 'reset-stats') return 'Zuruecksetzen';
   return 'Bestätigen';
 });
 
@@ -231,6 +240,14 @@ function requestDisable2FA() {
   showConfirmModal.value = true;
 }
 
+function requestResetStats() {
+  if (!editUser.value) return;
+  confirmType.value = 'reset-stats';
+  confirmTargetId.value = editUser.value.id;
+  confirmTargetUsername.value = editUser.value.username;
+  showConfirmModal.value = true;
+}
+
 function requestDeleteUser(id: string, username: string) {
   confirmType.value = 'delete-user';
   confirmTargetId.value = id;
@@ -257,6 +274,9 @@ async function runConfirmedAction() {
       if (updated && editUser.value?.id === updated.id) {
         editUser.value = updated;
       }
+    } else if (confirmType.value === 'reset-stats') {
+      await api.delete(`/users/${confirmTargetId.value}/stats`);
+      editSuccess.value = 'Statistik zurueckgesetzt';
     } else if (confirmType.value === 'delete-user') {
       await api.delete(`/users/${confirmTargetId.value}`);
       if (editUser.value?.id === confirmTargetId.value) {

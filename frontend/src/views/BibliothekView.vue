@@ -311,16 +311,18 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 1.5rem;
   z-index: 50;
+  overflow-y: auto;
 }
 
 .detail-card {
   width: 100%;
-  max-width: 680px;
-  max-height: 90vh;
+  max-width: 520px;
+  max-height: 85vh;
   overflow: auto;
   padding: 0;
+  margin: auto;
 }
 
 .detail-cover-area {
@@ -330,6 +332,7 @@ onMounted(async () => {
   overflow: hidden;
   line-height: 0;
   background-color: var(--color-bg);
+  flex-shrink: 0;
 }
 
 .detail-cover-img {
@@ -433,8 +436,20 @@ onMounted(async () => {
     gap: 0.75rem;
   }
 
+  .detail-overlay {
+    padding: 1rem;
+  }
+
   .detail-card {
-    max-width: 560px;
+    max-width: 440px;
+  }
+
+  .detail-content {
+    padding: 1.25rem;
+  }
+
+  .detail-text {
+    font-size: 0.9rem;
   }
 }
 
@@ -485,12 +500,31 @@ onMounted(async () => {
     -webkit-line-clamp: 1;
   }
 
+  .detail-overlay {
+    padding: 0.5rem;
+    align-items: flex-start;
+    padding-top: 2rem;
+  }
+
   .detail-card {
     max-width: 100%;
+    max-height: none;
+  }
+
+  .detail-cover-area {
+    aspect-ratio: 2 / 1;
   }
 
   .detail-content {
     padding: 1rem;
+  }
+
+  .detail-title {
+    font-size: 1.1rem;
+  }
+
+  .detail-text {
+    font-size: 0.85rem;
   }
 
   .detail-actions {

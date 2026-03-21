@@ -219,6 +219,33 @@ export async function userRoutes(fastify: FastifyInstance) {
 
   fastify.delete<{
     Params: { id: string };
+  }>('/:id/stats', {
+    preHandler: requireAdmin,
+    schema: {
+      params: {
+        type: 'object',
+        properties: { id: { type: 'string', format: 'uuid' } },
+      },
+    },
+  }, async (request, reply) => {
+    const { id } = request.params;
+
+    const user = await db('users').where('id', id).first();
+    if (!user) {
+      return reply.status(404).send({ success: false, error: 'Benutzer nicht gefunden' });
+    }
+
+    await db('player_stats').where('user_id', id).delete();
+
+    await logAudit(db, request.session.userId!, 'stats_reset', {
+      targetUser: user.username,
+    });
+
+    return { success: true };
+  });
+
+  fastify.delete<{
+    Params: { id: string };
   }>('/:id', {
     preHandler: requireAdmin,
     schema: {
