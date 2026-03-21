@@ -278,7 +278,59 @@ systemctl enable "$PGADMIN_SERVICE_NAME" > /dev/null 2>&1
 
 if [ -n "$DOMAIN" ]; then
   info "Nginx-Konfiguration wird für pgAdmin 4 aktualisiert..."
-  cat > "/etc/nginx/sites-available/$SERVICE_NAME" << EOF
+
+  SSL_CERT="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+  SSL_KEY="/etc/letsencrypt/live/$DOMAIN/privkey.pem"
+  HAS_SSL=0
+  if [ -f "$SSL_CERT" ] && [ -f "$SSL_KEY" ]; then
+    HAS_SSL=1
+  fi
+
+  if [ "$HAS_SSL" -eq 1 ]; then
+    cat > "/etc/nginx/sites-available/$SERVICE_NAME" << EOF
+server {
+    listen 80;
+    server_name $DOMAIN;
+    return 301 https://\$host\$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name $DOMAIN;
+
+    ssl_certificate $SSL_CERT;
+    ssl_certificate_key $SSL_KEY;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    location = /pgadmin4 {
+        return 301 /pgadmin4/;
+    }
+
+    location /pgadmin4/ {
+        proxy_pass http://unix:$PGADMIN_SOCKET_DIR/pgadmin4.sock:/;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Script-Name /pgadmin4;
+        proxy_set_header X-Scheme \$scheme;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+  else
+    cat > "/etc/nginx/sites-available/$SERVICE_NAME" << EOF
 server {
     listen 80;
     server_name $DOMAIN;
@@ -309,6 +361,7 @@ server {
     }
 }
 EOF
+  fi
 
   ln -sf "/etc/nginx/sites-available/$SERVICE_NAME" "/etc/nginx/sites-enabled/"
   rm -f /etc/nginx/sites-enabled/default
@@ -318,14 +371,18 @@ EOF
     systemctl reload nginx
     success "Nginx aktualisiert"
   else
-    fail "Nginx-Konfiguration für pgAdmin ist fehlerhaft."
+    fail "Nginx-Konfiguration ist fehlerhaft."
   fi
 
-  info "SSL-Zertifikat wird erneuert..."
-  if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email 2>&1 | tail -3; then
-    success "SSL aktualisiert"
+  if [ "$HAS_SSL" -eq 0 ]; then
+    info "SSL-Zertifikat wird erstmalig angefordert..."
+    if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email 2>&1 | tail -3; then
+      success "SSL eingerichtet"
+    else
+      warn "SSL-Einrichtung fehlgeschlagen. Bitte manuell: sudo certbot --nginx -d $DOMAIN"
+    fi
   else
-    warn "SSL-Erneuerung fehlgeschlagen. Bitte manuell pruefen: sudo certbot --nginx -d $DOMAIN"
+    success "SSL-Zertifikat vorhanden, kein Neuanfordern noetig"
   fi
 fi
 
