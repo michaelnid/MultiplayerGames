@@ -21,9 +21,13 @@ export async function lobbyRoutes(fastify: FastifyInstance) {
     return Number.isFinite(num) ? num : fallback;
   };
 
-  fastify.get('/', { preHandler: requireAuth }, async () => {
+  fastify.get('/', { preHandler: requireAuth }, async (request) => {
+    const userId = request.session.userId!;
     const lobbies = await db('lobbies')
       .whereIn('status', ['wartend', 'laeuft'])
+      .join('lobby_players', function () {
+        this.on('lobbies.id', 'lobby_players.lobby_id').andOn('lobby_players.user_id', db.raw('?', [userId]));
+      })
       .join('plugins', 'lobbies.plugin_id', 'plugins.id')
       .join('users', 'lobbies.created_by', 'users.id')
       .select(
