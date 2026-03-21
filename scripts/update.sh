@@ -133,7 +133,10 @@ fi
 run_as_pgadmin "'$PGADMIN_DIR/venv/bin/pip' install --upgrade pip > /dev/null 2>&1" || fail "pip Upgrade für pgAdmin fehlgeschlagen."
 run_as_pgadmin "'$PGADMIN_DIR/venv/bin/pip' install --upgrade pgadmin4 gunicorn > /dev/null 2>&1" || fail "pgAdmin Upgrade fehlgeschlagen."
 
-PGADMIN_APP_DIR=$(run_as_pgadmin "'$PGADMIN_DIR/venv/bin/python' -c \"import os, pgadmin4; print(os.path.dirname(pgadmin4.__file__))\"")
+PGADMIN_APP_DIR=$(run_as_pgadmin "'$PGADMIN_DIR/venv/bin/python' -c \"import importlib.util; spec = importlib.util.find_spec('pgadmin4'); paths = list(spec.submodule_search_locations or []); print(paths[0] if paths else '')\"")
+if [ -z "$PGADMIN_APP_DIR" ] || [ ! -f "$PGADMIN_APP_DIR/setup.py" ]; then
+  fail "pgAdmin-Paketpfad konnte nicht ermittelt werden."
+fi
 
 cat > "$PGADMIN_DIR/run-gunicorn.sh" << EOF
 #!/bin/bash
@@ -142,8 +145,7 @@ exec "$PGADMIN_DIR/venv/bin/gunicorn" \\
   --bind unix:$PGADMIN_SOCKET_DIR/pgadmin4.sock \\
   --workers=1 \\
   --threads=25 \\
-  --chdir "$PGADMIN_APP_DIR" \\
-  pgAdmin4:app
+  pgadmin4.pgAdmin4:app
 EOF
 chmod 750 "$PGADMIN_DIR/run-gunicorn.sh"
 chown "$PGADMIN_SERVICE_USER:$PGADMIN_SERVICE_USER" "$PGADMIN_DIR/run-gunicorn.sh"
