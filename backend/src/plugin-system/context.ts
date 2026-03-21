@@ -96,7 +96,7 @@ export function createPluginContext(
           const updates: Record<string, unknown> = {
             games_played: existing.games_played + 1,
             last_played: db.fn.now(),
-            total_score: existing.total_score + scoreChange,
+            total_score: Math.max(0, existing.total_score + scoreChange),
           };
           if (result.win) updates.wins = existing.wins + 1;
           else if (result.draw) updates.draws = existing.draws + 1;
@@ -112,7 +112,7 @@ export function createPluginContext(
             wins: result.win ? 1 : 0,
             losses: !result.win && !result.draw ? 1 : 0,
             draws: result.draw ? 1 : 0,
-            total_score: scoreChange,
+            total_score: Math.max(0, scoreChange),
             games_played: 1,
             last_played: db.fn.now(),
           });

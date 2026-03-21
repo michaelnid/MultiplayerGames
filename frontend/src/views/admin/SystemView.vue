@@ -80,7 +80,7 @@ const dbAdmin = ref<DbAdminData>({
 
 async function loadHealth() {
   try {
-    const result = await api.get<HealthData>('/health');
+    const result = await api.get<HealthData>('/stats/health');
     health.value = result.data ?? {};
   } catch {
     // Server nicht erreichbar

@@ -19,9 +19,16 @@
 
         <div class="topbar-actions">
           <template v-if="auth.isLoggedIn">
-            <RouterLink v-if="auth.isAdmin" to="/admin" class="nav-link">Admin</RouterLink>
-            <RouterLink to="/profil" class="nav-link">{{ auth.user?.username }}</RouterLink>
-            <button class="btn-logout" @click="handleLogout">Abmelden</button>
+            <RouterLink v-if="auth.isAdmin" to="/admin" class="btn-admin">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+              Admin
+            </RouterLink>
+            <div class="user-chip">
+              <RouterLink to="/profil" class="user-chip-name">{{ auth.user?.username }}</RouterLink>
+              <button class="user-chip-logout" @click="handleLogout" title="Abmelden">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              </button>
+            </div>
           </template>
           <RouterLink v-else to="/login" class="btn-login">Anmelden</RouterLink>
         </div>
@@ -178,20 +185,64 @@ async function handleLogout() {
   color: white;
 }
 
-.btn-logout {
-  padding: 0.45rem 0.85rem;
+.btn-admin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
   border-radius: var(--radius);
-  background: none;
-  border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: var(--color-danger);
   font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all var(--transition);
+}
+
+.btn-admin:hover {
+  background-color: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.user-chip-name {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+.user-chip-name:hover {
+  color: var(--color-primary);
+}
+
+.user-chip-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.6rem;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  color: var(--color-text-muted);
   cursor: pointer;
   transition: all var(--transition);
 }
 
-.btn-logout:hover {
+.user-chip-logout:hover {
   color: var(--color-danger);
-  border-color: var(--color-danger);
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
 .public-content {
