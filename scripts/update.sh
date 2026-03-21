@@ -374,15 +374,8 @@ EOF
     fail "Nginx-Konfiguration ist fehlerhaft."
   fi
 
-  if [ "$HAS_SSL" -eq 0 ]; then
-    info "SSL-Zertifikat wird erstmalig angefordert..."
-    if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email 2>&1 | tail -3; then
-      success "SSL eingerichtet"
-    else
-      warn "SSL-Einrichtung fehlgeschlagen. Bitte manuell: sudo certbot --nginx -d $DOMAIN"
-    fi
-  else
-    success "SSL-Zertifikat vorhanden, kein Neuanfordern noetig"
+  if [ "$HAS_SSL" -eq 1 ]; then
+    success "SSL-Zertifikat vorhanden (Certbot erneuert automatisch)"
   fi
 fi
 
