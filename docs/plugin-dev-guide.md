@@ -792,16 +792,16 @@ beforeUnmount() {
 
 ### Vollbild-Modus (Core-Feature)
 
-Der Core bietet einen integrierten Vollbild-Button fuer alle Spiele. Oben rechts im Spielbereich erscheint ein Vergroesserungs-Icon, das den gesamten Spielcontainer im Browser-Vollbild oeffnet. Im Vollbild wird stattdessen ein X-Icon angezeigt, um den Modus zu verlassen.
+Der Core bietet einen integrierten Vollbild-Button fuer alle Spiele. Oben rechts im Spielbereich erscheint ein Vergroesserungs-Icon. Beim Klick wird der Spielcontainer als Overlay ueber die gesamte Seite gelegt (`position: fixed; inset: 0`). Im Overlay wird stattdessen ein X-Icon angezeigt, um den Modus zu verlassen.
 
-**Plugins muessen nichts tun** -- der Vollbild-Button wird automatisch vom Core gerendert. Das Plugin-Frontend wird im Vollbild-Modus zentriert und kann den gesamten Bildschirm nutzen.
+**Plugins muessen nichts tun** -- der Vollbild-Button wird automatisch vom Core gerendert. Das Plugin-Frontend wird im Overlay zentriert und kann den gesamten Bildschirm nutzen.
 
 **Hinweise fuer Plugin-Entwickler:**
 
-- Der Vollbild-Container hat die CSS-Klasse `game-fullscreen` im aktiven Zustand.
+- Der Overlay-Container hat die CSS-Klasse `game-overlay` im aktiven Zustand (`z-index: 9999`).
 - Plugins sollten relative Groessen (`%`, `vw`, `vh`, `flex`, `grid`) statt fester Pixel verwenden, damit das Layout im Vollbild korrekt skaliert.
-- Der Vollbild-Button hat `z-index: 100` -- Plugins sollten keine hoeheren z-index-Werte fuer UI-Elemente oben rechts verwenden.
-- Der Nutzer kann den Vollbild-Modus auch mit `Escape` verlassen (Browser-Standard).
+- Der Schliessen-Button hat `z-index: 100` und `position: fixed` -- Plugins sollten keine hoeheren z-index-Werte fuer UI-Elemente oben rechts verwenden.
+- Der Nutzer kann das Overlay auch mit `Escape` verlassen.
 
 ### WebSocket-Events empfangen
 
