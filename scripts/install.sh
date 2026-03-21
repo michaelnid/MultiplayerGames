@@ -257,26 +257,24 @@ chown "$PGADMIN_SERVICE_USER:$PGADMIN_SERVICE_USER" "$PGADMIN_DIR/run-gunicorn.s
 mkdir -p "$PGADMIN_DATA_DIR/sessions" "$PGADMIN_DATA_DIR/storage"
 chown -R "$PGADMIN_SERVICE_USER:$PGADMIN_SERVICE_USER" "$PGADMIN_DATA_DIR"
 
-info "pgAdmin-Basisbenutzer wird initialisiert..."
-if ! run_as_pgadmin "PGADMIN_CONFIG_SERVER_MODE=True \
-PGADMIN_CONFIG_DATA_DIR='$PGADMIN_DATA_DIR' \
-PGADMIN_CONFIG_LOG_FILE='$PGADMIN_LOG_DIR/pgadmin4.log' \
-PGADMIN_CONFIG_SQLITE_PATH='$PGADMIN_DATA_DIR/pgadmin4.db' \
-PGADMIN_CONFIG_SESSION_DB_PATH='$PGADMIN_DATA_DIR/sessions' \
-PGADMIN_CONFIG_STORAGE_DIR='$PGADMIN_DATA_DIR/storage' \
-'$PGADMIN_DIR/venv/bin/python' '$PGADMIN_APP_DIR/setup.py' setup-db 2>&1"; then
-  warn "pgAdmin-Konfigurationsdatenbank konnte nicht erstellt werden. pgAdmin wird möglicherweise nicht funktionieren."
-fi
+# config_local.py erstellen (pgAdmin 9.x ignoriert PGADMIN_CONFIG_* Env-Vars)
+cat > "$PGADMIN_APP_DIR/config_local.py" << 'PYEOF'
+import os
 
-if ! run_as_pgadmin "PGADMIN_CONFIG_SERVER_MODE=True \
-PGADMIN_CONFIG_DATA_DIR='$PGADMIN_DATA_DIR' \
-PGADMIN_CONFIG_LOG_FILE='$PGADMIN_LOG_DIR/pgadmin4.log' \
-PGADMIN_CONFIG_SQLITE_PATH='$PGADMIN_DATA_DIR/pgadmin4.db' \
-PGADMIN_CONFIG_SESSION_DB_PATH='$PGADMIN_DATA_DIR/sessions' \
-PGADMIN_CONFIG_STORAGE_DIR='$PGADMIN_DATA_DIR/storage' \
-'$PGADMIN_DIR/venv/bin/python' '$PGADMIN_APP_DIR/setup.py' add-user '$PGADMIN_ADMIN_EMAIL' '$PGADMIN_ADMIN_PASSWORD' --admin 2>&1"; then
-  warn "pgAdmin-Benutzer konnte nicht automatisch erstellt werden."
-  warn "Bitte manuell einrichten: sudo -u $PGADMIN_SERVICE_USER $PGADMIN_DIR/venv/bin/python $PGADMIN_APP_DIR/setup.py add-user EMAIL PASSWORT --admin"
+SERVER_MODE = True
+DATA_DIR = '/var/lib/mike-pgadmin4'
+LOG_FILE = '/var/log/mike-pgadmin4/pgadmin4.log'
+SQLITE_PATH = os.path.join(DATA_DIR, 'pgadmin4.db')
+SESSION_DB_PATH = os.path.join(DATA_DIR, 'sessions')
+STORAGE_DIR = os.path.join(DATA_DIR, 'storage')
+ENHANCED_COOKIE_PROTECTION = True
+PYEOF
+chown "$PGADMIN_SERVICE_USER:$PGADMIN_SERVICE_USER" "$PGADMIN_APP_DIR/config_local.py"
+chmod 640 "$PGADMIN_APP_DIR/config_local.py"
+
+info "pgAdmin-Basisbenutzer wird initialisiert..."
+if ! run_as_pgadmin "PGADMIN_SETUP_EMAIL='$PGADMIN_ADMIN_EMAIL' PGADMIN_SETUP_PASSWORD='$PGADMIN_ADMIN_PASSWORD' '$PGADMIN_DIR/venv/bin/python' '$PGADMIN_APP_DIR/setup.py' setup-db 2>&1"; then
+  warn "pgAdmin-Konfigurationsdatenbank konnte nicht erstellt werden. pgAdmin wird möglicherweise nicht funktionieren."
   PGADMIN_ADMIN_PASSWORD="(manuell einrichten)"
 fi
 
@@ -295,13 +293,6 @@ RestartSec=5
 RuntimeDirectory=mike-pgadmin4
 RuntimeDirectoryMode=0750
 Environment=PYTHONUNBUFFERED=1
-Environment=PGADMIN_CONFIG_SERVER_MODE=True
-Environment=PGADMIN_CONFIG_DATA_DIR=$PGADMIN_DATA_DIR
-Environment=PGADMIN_CONFIG_LOG_FILE=$PGADMIN_LOG_DIR/pgadmin4.log
-Environment=PGADMIN_CONFIG_SQLITE_PATH=$PGADMIN_DATA_DIR/pgadmin4.db
-Environment=PGADMIN_CONFIG_SESSION_DB_PATH=$PGADMIN_DATA_DIR/sessions
-Environment=PGADMIN_CONFIG_STORAGE_DIR=$PGADMIN_DATA_DIR/storage
-Environment=PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION=True
 
 [Install]
 WantedBy=multi-user.target
