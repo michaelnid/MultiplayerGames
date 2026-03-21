@@ -2,14 +2,14 @@
   <div class="bibliothek">
     <section class="bib-header">
       <h1>Spielebibliothek</h1>
-      <p class="bib-sub">Alle verfuegbaren Spiele als Kacheln</p>
+      <p class="bib-sub">Alle verfügbaren Spiele als Kacheln</p>
     </section>
 
     <div v-if="loading" class="loading-state">Spiele werden geladen...</div>
 
     <div v-else-if="plugins.length === 0" class="empty-state card">
       <p>Noch keine Spiele installiert.</p>
-      <p class="text-muted">Spiele werden als Plugins im Admin-Bereich hinzugefuegt.</p>
+      <p class="text-muted">Spiele werden als Plugins im Admin-Bereich hinzugefügt.</p>
     </div>
 
     <div v-else class="game-grid">

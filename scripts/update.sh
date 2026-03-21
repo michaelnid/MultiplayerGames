@@ -22,6 +22,15 @@ success() { echo -e "${GREEN}[OK]${NC} $1"; }
 warn() { echo -e "${YELLOW}[WARNUNG]${NC} $1"; }
 fail() { echo -e "${RED}[FEHLER]${NC} $1"; exit 1; }
 
+cleanup() {
+  if [ $? -ne 0 ]; then
+    warn "Update fehlgeschlagen – Services werden trotzdem neu gestartet..."
+    systemctl start "$SERVICE_NAME" 2>/dev/null || true
+    systemctl start "$PGADMIN_SERVICE_NAME" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+
 run_as_service() {
   local cmd="$1"
   su -s /bin/bash -c "$cmd" "$SERVICE_USER"

@@ -4,16 +4,11 @@
 
     <div v-else-if="!plugin" class="empty-state card">
       <p>Spiel nicht gefunden.</p>
-      <RouterLink to="/bibliothek" class="back-link">Zurueck zur Bibliothek</RouterLink>
+      <RouterLink to="/bibliothek" class="back-link-inline">Zurück zur Bibliothek</RouterLink>
     </div>
 
-    <template v-else>
-      <RouterLink to="/bibliothek" class="back-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-        Zurueck zur Bibliothek
-      </RouterLink>
-
-      <div class="detail-card card">
+    <div v-else class="detail-card card">
+      <div class="detail-top">
         <div class="detail-cover-area">
           <img
             v-if="plugin.manifest?.frontend?.bibliothek?.coverImage"
@@ -32,18 +27,13 @@
           </div>
         </div>
 
-        <div class="detail-content">
+        <div class="detail-info">
           <h1 class="detail-title">{{ plugin.name }}</h1>
-
           <ul class="detail-meta">
             <li><strong>Spieler:</strong> {{ playerRange(plugin) }}</li>
             <li><strong>Version:</strong> v{{ plugin.version }}</li>
             <li v-if="plugin.manifest?.author"><strong>Autor:</strong> {{ plugin.manifest.author }}</li>
           </ul>
-
-          <h2 class="detail-section-title">Spielerklaerung</h2>
-          <p class="detail-text">{{ fullDescription(plugin) }}</p>
-
           <div class="detail-actions">
             <RouterLink
               v-if="auth.isLoggedIn"
@@ -58,7 +48,19 @@
           </div>
         </div>
       </div>
-    </template>
+
+      <div class="detail-content">
+        <h2 class="detail-section-title">Spielerklärung</h2>
+        <p class="detail-text">{{ fullDescription(plugin) }}</p>
+      </div>
+
+      <div class="detail-footer">
+        <RouterLink to="/bibliothek" class="back-btn btn-secondary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Zurück zur Bibliothek
+        </RouterLink>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -106,7 +108,7 @@ function playerRange(p: Plugin): string {
 function fullDescription(p: Plugin) {
   return p.manifest?.frontend?.bibliothek?.description
     ?? p.manifest?.description
-    ?? 'Dieses Spiel hat noch keine detailierte Spielerklaerung hinterlegt.';
+    ?? 'Dieses Spiel hat noch keine detaillierte Spielerklärung hinterlegt.';
 }
 
 onMounted(async () => {
@@ -124,7 +126,7 @@ onMounted(async () => {
 
 <style scoped>
 .spiel-detail {
-  max-width: 700px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 0 1.5rem 3rem;
 }
@@ -136,19 +138,9 @@ onMounted(async () => {
   color: var(--color-text-muted);
 }
 
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  color: var(--color-text-muted);
-  text-decoration: none;
-  font-size: 0.875rem;
-  margin-bottom: 1rem;
-  transition: color var(--transition);
-}
-
-.back-link:hover {
+.back-link-inline {
   color: var(--color-primary);
+  text-decoration: none;
 }
 
 .detail-card {
@@ -156,9 +148,15 @@ onMounted(async () => {
   overflow: hidden;
 }
 
+.detail-top {
+  display: flex;
+  gap: 0;
+}
+
 .detail-cover-area {
-  width: 100%;
-  aspect-ratio: 16 / 9;
+  width: 280px;
+  min-height: 200px;
+  flex-shrink: 0;
   overflow: hidden;
   line-height: 0;
   background-color: var(--color-bg);
@@ -193,14 +191,17 @@ onMounted(async () => {
   font-weight: 700;
 }
 
-.detail-content {
+.detail-info {
+  flex: 1;
   padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .detail-title {
-  font-size: 1.5rem;
-  margin-top: 0;
-  margin-bottom: 0.5rem;
+  font-size: 1.4rem;
+  margin: 0 0 0.5rem;
 }
 
 .detail-meta {
@@ -208,42 +209,27 @@ onMounted(async () => {
   padding: 0;
   margin: 0 0 1rem;
   color: var(--color-text-muted);
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem 1.2rem;
+  gap: 0.3rem 1rem;
 }
 
 .detail-meta strong {
   color: var(--color-text);
 }
 
-.detail-section-title {
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
-  font-size: 1rem;
-  color: var(--color-text-muted);
-}
-
-.detail-text {
-  margin-bottom: 1.5rem;
-  color: var(--color-text);
-  line-height: 1.7;
-  white-space: pre-line;
-}
-
 .detail-actions {
-  display: flex;
-  gap: 0.6rem;
+  margin-top: auto;
 }
 
 .play-btn {
   display: inline-block;
-  padding: 0.6rem 1.25rem;
+  padding: 0.5rem 1.25rem;
   border-radius: 20px;
   background-color: var(--color-primary);
   color: white;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
   text-decoration: none;
   transition: opacity var(--transition), transform var(--transition);
@@ -255,20 +241,71 @@ onMounted(async () => {
   color: white;
 }
 
+.detail-content {
+  padding: 0 1.5rem 1.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.detail-section-title {
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: var(--color-text-muted);
+}
+
+.detail-text {
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
+.detail-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
 @media (max-width: 768px) {
   .spiel-detail {
     padding: 0 1rem 2rem;
+  }
+
+  .detail-top {
+    flex-direction: column;
+  }
+
+  .detail-cover-area {
+    width: 100%;
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+  }
+
+  .detail-info {
+    padding: 1rem;
   }
 
   .detail-title {
     font-size: 1.2rem;
   }
 
+  .detail-content {
+    padding: 0 1rem 1rem;
+  }
+
   .detail-text {
     font-size: 0.9rem;
   }
 
-  .detail-content {
+  .detail-footer {
     padding: 1rem;
   }
 }

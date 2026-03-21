@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="settings-header">
-      <RouterLink to="/admin/spieleinstellungen" class="back-link">&larr; Zurueck</RouterLink>
+      <RouterLink to="/admin/spieleinstellungen" class="back-link">&larr; Zurück</RouterLink>
       <h2>{{ pluginName }} -- Einstellungen</h2>
     </div>
 

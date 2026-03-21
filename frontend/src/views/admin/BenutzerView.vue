@@ -61,7 +61,7 @@
         </div>
         <div class="form-group totp-section">
           <label>Statistik</label>
-          <button type="button" class="btn-danger btn-sm" @click="requestResetStats">Statistik zuruecksetzen</button>
+          <button type="button" class="btn-danger btn-sm" @click="requestResetStats">Statistik zurücksetzen</button>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn-primary">Speichern</button>
@@ -141,7 +141,7 @@ const confirmBusy = ref(false);
 const confirmModalTitle = computed(() => {
   if (confirmType.value === 'disable2fa') return '2FA deaktivieren';
   if (confirmType.value === 'delete-user') return 'Benutzer löschen';
-  if (confirmType.value === 'reset-stats') return 'Statistik zuruecksetzen';
+  if (confirmType.value === 'reset-stats') return 'Statistik zurücksetzen';
   return 'Bestätigung';
 });
 
@@ -153,7 +153,7 @@ const confirmModalMessage = computed(() => {
     return `Benutzer "${confirmTargetUsername.value}" wirklich löschen?`;
   }
   if (confirmType.value === 'reset-stats') {
-    return `Alle Statistiken (Siege, Niederlagen, Punkte) von "${confirmTargetUsername.value}" wirklich zuruecksetzen? Dies kann nicht rueckgaengig gemacht werden.`;
+    return `Alle Statistiken (Siege, Niederlagen, Punkte) von "${confirmTargetUsername.value}" wirklich zurücksetzen? Dies kann nicht rückgängig gemacht werden.`;
   }
   return '';
 });
@@ -161,7 +161,7 @@ const confirmModalMessage = computed(() => {
 const confirmModalConfirmText = computed(() => {
   if (confirmType.value === 'disable2fa') return '2FA deaktivieren';
   if (confirmType.value === 'delete-user') return 'Löschen';
-  if (confirmType.value === 'reset-stats') return 'Zuruecksetzen';
+  if (confirmType.value === 'reset-stats') return 'Zurücksetzen';
   return 'Bestätigen';
 });
 
@@ -276,7 +276,7 @@ async function runConfirmedAction() {
       }
     } else if (confirmType.value === 'reset-stats') {
       await api.delete(`/users/${confirmTargetId.value}/stats`);
-      editSuccess.value = 'Statistik zurueckgesetzt';
+      editSuccess.value = 'Statistik zurückgesetzt';
     } else if (confirmType.value === 'delete-user') {
       await api.delete(`/users/${confirmTargetId.value}`);
       if (editUser.value?.id === confirmTargetId.value) {
