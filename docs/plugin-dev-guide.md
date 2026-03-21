@@ -1,17 +1,17 @@
 # MIKE Plugin-Entwicklungsguide
 
-Dieses Dokument beschreibt vollstaendig, wie Plugins fuer das MIKE Multiplayer Game System entwickelt werden. Es ist verbindlich -- alle hier beschriebenen Regeln und Schnittstellen muessen eingehalten werden.
+Dieses Dokument beschreibt vollständig, wie Plugins für das MIKE Multiplayer Game System entwickelt werden. Es ist verbindlich -- alle hier beschriebenen Regeln und Schnittstellen müssen eingehalten werden.
 
 ---
 
 ## Inhaltsverzeichnis
 
-1. [Ueberblick](#ueberblick)
+1. [Überblick](#überblick)
 2. [Plugin-Struktur](#plugin-struktur)
 3. [manifest.json -- Spezifikation](#manifestjson----spezifikation)
 4. [Backend-API (context-Objekt)](#backend-api-context-objekt)
 5. [Frontend-API](#frontend-api)
-6. [Schnellstart fuer vollwertige Spiele](#schnellstart-fuer-vollwertige-spiele)
+6. [Schnellstart für vollwertige Spiele](#schnellstart-für-vollwertige-spiele)
 7. [Design-Richtlinien](#design-richtlinien)
 8. [Statische Assets](#statische-assets)
 9. [Admin-Einstellungskomponente](#admin-einstellungskomponente)
@@ -19,15 +19,15 @@ Dieses Dokument beschreibt vollstaendig, wie Plugins fuer das MIKE Multiplayer G
 11. [Lobby-Lebenszyklus](#lobby-lebenszyklus)
 12. [Fehlerbehandlung](#fehlerbehandlung)
 13. [Sicherheitsregeln](#sicherheitsregeln)
-14. [Verbindliche Regeln fuer Plugin-Entwickler](#verbindliche-regeln-fuer-plugin-entwickler)
+14. [Verbindliche Regeln für Plugin-Entwickler](#verbindliche-regeln-für-plugin-entwickler)
 15. [Plugin-Limits und Einschraenkungen](#plugin-limits-und-einschraenkungen)
 16. [ZIP-Paket erstellen und installieren](#zip-paket-erstellen-und-installieren)
-17. [Versionierung und Kompatibilitaet](#versionierung-und-kompatibilitaet)
-18. [Vollstaendiges Beispiel-Plugin](#vollstaendiges-beispiel-plugin)
+17. [Versionierung und Kompatibilität](#versionierung-und-kompatibilität)
+18. [Vollständiges Beispiel-Plugin](#vollständiges-beispiel-plugin)
 
 ---
 
-## Ueberblick
+## Überblick
 
 MIKE-Plugins erweitern das System um neue Multiplayer-Spiele. Jedes Plugin besteht aus:
 
@@ -36,7 +36,7 @@ MIKE-Plugins erweitern das System um neue Multiplayer-Spiele. Jedes Plugin beste
 - **manifest.json**: Metadaten und Konfiguration
 - **Assets** (optional): Bilder, Icons, Sounds, CSS
 
-Plugins werden als ZIP-Datei im Admin-Bereich hochgeladen. Der Core entpackt, validiert und registriert das Plugin. Das Plugin erhaelt vom Core ein `context`-Objekt mit Zugriff auf alle bereitgestellten APIs. Direkter Zugriff auf die Datenbank, das Dateisystem oder andere Plugins ist laut Richtlinie nicht erlaubt und muss im Review geprueft werden.
+Plugins werden als ZIP-Datei im Admin-Bereich hochgeladen. Der Core entpackt, validiert und registriert das Plugin. Das Plugin erhaelt vom Core ein `context`-Objekt mit Zugriff auf alle bereitgestellten APIs. Direkter Zugriff auf die Datenbank, das Dateisystem oder andere Plugins ist laut Richtlinie nicht erlaubt und muss im Review geprüft werden.
 
 ### Geltungsbereich und Verbindlichkeit
 
@@ -44,18 +44,18 @@ Dieser Guide beschreibt:
 
 - die offizielle Plugin-API (`context`, Events, Dateistruktur),
 - den aktuell implementierten Core-Stand (`v1.0.0`) und
-- Freigaberegeln fuer Plugins.
+- Freigaberegeln für Plugins.
 
 Wichtig:
 
 - Nicht jede Richtlinie ist aktuell technisch durch den Core erzwungen.
-- Wenn ein Punkt als "Richtlinie" markiert ist, gilt er weiterhin als Pflicht fuer Reviews/Freigaben.
+- Wenn ein Punkt als "Richtlinie" markiert ist, gilt er weiterhin als Pflicht für Reviews/Freigaben.
 - Wenn ein Punkt als "Erzwungen" markiert ist, blockiert der Core den Installations- oder Ladevorgang automatisch.
 
 Single Source of Truth:
 
 - Der kanonische Guide liegt unter `docs/plugin-dev-guide.md`.
-- Etwaige Kopien in Plugin-Unterordnern sind nur Spiegel und koennen veraltet sein.
+- Etwaige Kopien in Plugin-Unterordnern sind nur Spiegel und können veraltet sein.
 
 ---
 
@@ -70,8 +70,8 @@ mein-spiel/
     index.js                 # Pflicht: Frontend-Einstiegspunkt (Vue-Komponente)
     settings.js              # Optional: Admin-Einstellungskomponente
     assets/
-      icon.svg               # Optional: Icon fuer Bibliothek und Navigation
-      cover.png              # Optional: Cover-Bild fuer Bibliothek
+      icon.svg               # Optional: Icon für Bibliothek und Navigation
+      cover.png              # Optional: Cover-Bild für Bibliothek
       spielbrett.png          # Optional: Spielgrafiken
       sounds/
         ding.mp3             # Optional: Audio-Dateien
@@ -89,7 +89,7 @@ Wichtiger Implementierungs-Hinweis (Core v1.0.0):
 | `backend/index.js` | Ja | ESM (JavaScript) | Backend-Einstiegspunkt |
 | `frontend/index.js` | Ja | ESM (JavaScript) | Frontend-Vue-Komponente |
 | `frontend/settings.js` | Nein | ESM (JavaScript) | Admin-Einstellungskomponente |
-| Assets (Bilder, Audio, CSS) | Nein | Beliebig | Muessen im Plugin-Verzeichnis liegen |
+| Assets (Bilder, Audio, CSS) | Nein | Beliebig | Müssen im Plugin-Verzeichnis liegen |
 
 ---
 
@@ -110,7 +110,7 @@ Wichtiger Implementierungs-Hinweis (Core v1.0.0):
     "entry": "frontend/index.js",
     "bibliothek": {
       "title": "Mein Spiel",
-      "description": "Ausfuehrliche Beschreibung fuer die Spielebibliothek.",
+      "description": "Ausführliche Beschreibung für die Spielebibliothek.",
       "coverImage": "frontend/assets/cover.png"
     },
     "adminSettings": "frontend/settings.js"
@@ -123,11 +123,11 @@ Wichtiger Implementierungs-Hinweis (Core v1.0.0):
 
 ### Pflichtfelder
 
-Die folgenden Felder muessen in `manifest.json` vorhanden sein:
+Die folgenden Felder müssen in `manifest.json` vorhanden sein:
 
 | Feld | Typ | Bedeutung |
 |------|-----|-----------|
-| `slug` | `string` | Eindeutiger Bezeichner fuer URL/Verzeichnis |
+| `slug` | `string` | Eindeutiger Bezeichner für URL/Verzeichnis |
 | `name` | `string` | Anzeigename in der UI |
 | `version` | `string` | Plugin-Version |
 | `description` | `string` | Kurzbeschreibung |
@@ -141,7 +141,7 @@ Die folgenden Felder muessen in `manifest.json` vorhanden sein:
 | Feld | Typ | Default | Beschreibung |
 |------|-----|---------|-------------|
 | `author` | `string` | `""` | Autor oder Team |
-| `coreVersion` | `string` | Keine Pruefung | Benoetigte Core-Version als SemVer-Range (z.B. `>=1.0.0`, `^1.2.0`) |
+| `coreVersion` | `string` | Keine Prüfung | Benoetigte Core-Version als SemVer-Range (z.B. `>=1.0.0`, `^1.2.0`) |
 | `icon` | `string` | Keins | Relativer Pfad zum Plugin-Icon (SVG empfohlen) |
 | `frontend.bibliothek.title` | `string` | `name` | Titel in der Bibliothek |
 | `frontend.bibliothek.description` | `string` | `description` | Beschreibungstext in der Bibliothek |
@@ -150,12 +150,12 @@ Die folgenden Felder muessen in `manifest.json` vorhanden sein:
 
 ### Technisch erzwungene Manifest-Validierung (Core v1.0.0)
 
-Die folgende Tabelle beschreibt die **tatsaechlich implementierten** Pruefungen im Core:
+Die folgende Tabelle beschreibt die **tatsaechlich implementierten** Prüfungen im Core:
 
-| Pruefung | Status |
+| Prüfung | Status |
 |----------|--------|
 | `manifest.json` im ZIP-Root vorhanden | Erzwungen |
-| `manifest.json` ist gueltiges JSON | Erzwungen |
+| `manifest.json` ist gültiges JSON | Erzwungen |
 | Pflichtfelder vorhanden (`slug`, `name`, `version`, `description`, `minPlayers`, `maxPlayers`, `frontend`, `backend`) | Erzwungen |
 | `slug` entspricht `^[a-z0-9-]+$` und hat 2-64 Zeichen | Erzwungen |
 | `minPlayers >= 1` | Erzwungen |
@@ -170,19 +170,19 @@ Die folgende Tabelle beschreibt die **tatsaechlich implementierten** Pruefungen 
 | SemVer-Format von `version` | Erzwungen |
 | `name` Laenge (1-128) und nicht-leere `description` | Erzwungen |
 
-### Vorgabe fuer Bibliothek-Kachel und Spielerklaerung
+### Vorgabe für Bibliothek-Kachel und Spielerklärung
 
-Die Bibliothek zeigt jedes Plugin als anklickbare Kachel. Beim Klick wird eine Detailansicht mit Spielerklaerung geoeffnet. Damit diese Ansicht nutzbar ist, gelten folgende Regeln:
+Die Bibliothek zeigt jedes Plugin als anklickbare Kachel. Beim Klick wird eine Detailansicht mit Spielerklärung geoeffnet. Damit diese Ansicht nutzbar ist, gelten folgende Regeln:
 
-1. `frontend.bibliothek.description` soll eine **verstaendliche Spielerklaerung** enthalten:
+1. `frontend.bibliothek.description` soll eine **verstaendliche Spielerklärung** enthalten:
    - Spielziel
    - Grundregeln
    - Ablauf eines Zuges oder einer Runde
    - Gewinn- bzw. Endbedingungen
-2. `frontend.bibliothek.title` soll eine kurze Unterzeile fuer die Kachel liefern.
-3. Falls `frontend.bibliothek.description` fehlt, faellt der Core auf `description` zurueck. Das ist nur ein Fallback und fuer produktive Plugins nicht ausreichend.
+2. `frontend.bibliothek.title` soll eine kurze Unterzeile für die Kachel liefern.
+3. Falls `frontend.bibliothek.description` fehlt, fällt der Core auf `description` zurück. Das ist nur ein Fallback und für produktive Plugins nicht ausreichend.
 
-Empfohlene Laenge fuer `frontend.bibliothek.description`: 300-1200 Zeichen.
+Empfohlene Laenge für `frontend.bibliothek.description`: 300-1200 Zeichen.
 
 ### Icon- und Cover-Anforderungen
 
@@ -190,39 +190,39 @@ Empfohlene Laenge fuer `frontend.bibliothek.description`: 300-1200 Zeichen.
 - Wenn kein `icon` vorhanden ist, zeigt der Core als Fallback den ersten Buchstaben des Spielnamens.
 - SVG sollte quadratisch sein (z.B. 128x128 oder 256x256), keine externen Referenzen enthalten und kein Script enthalten.
 - Optional kann `frontend.bibliothek.coverImage` (PNG/JPG/SVG) gesetzt werden. Dieses Bild wird gross in der Detailansicht der Bibliothek angezeigt.
-- Cover-SVGs muessen vollstaendig innerhalb der `viewBox` gezeichnet sein. Elemente, die ueber die `viewBox` hinausgehen, werden sichtbar abgeschnitten.
-- Empfohlen fuer Cover: Seitenverhaeltnis 16:9 (z.B. 1280x720 oder 640x360) und ein Sicherheitsrand von mindestens 5 Prozent pro Seite fuer wichtige Inhalte.
+- Cover-SVGs müssen vollständig innerhalb der `viewBox` gezeichnet sein. Elemente, die über die `viewBox` hinausgehen, werden sichtbar abgeschnitten.
+- Empfohlen für Cover: Seitenverhältnis 16:9 (z.B. 1280x720 oder 640x360) und ein Sicherheitsrand von mindestens 5 Prozent pro Seite für wichtige Inhalte.
 
 ### Validierung bei Installation
 
-Der Core prueft bei der Installation:
+Der Core prüft bei der Installation:
 
-1. `manifest.json` muss im Root des ZIP liegen und gueltiges JSON sein.
-2. Alle Pflichtfelder muessen vorhanden sein.
+1. `manifest.json` muss im Root des ZIP liegen und gültiges JSON sein.
+2. Alle Pflichtfelder müssen vorhanden sein.
 3. `slug` muss dem Muster `/^[a-z0-9-]+$/` entsprechen (2-64 Zeichen).
 4. `minPlayers` muss >= 1 sein.
 5. `maxPlayers` muss >= `minPlayers` sein.
 6. Falls `coreVersion` angegeben: Die installierte Core-Version muss die Anforderung erfuellen.
-7. `frontend.entry` und `backend.entry` muessen Strings und sichere relative Pfade sein.
+7. `frontend.entry` und `backend.entry` müssen Strings und sichere relative Pfade sein.
 8. Ein Plugin mit dem gleichen `slug` darf nicht bereits installiert sein.
-9. `version` muss gueltiges SemVer sein.
+9. `version` muss gültiges SemVer sein.
 10. `name` muss 1-128 Zeichen lang sein und `description` darf nicht leer sein.
 11. Wenn `icon` gesetzt ist, muss es eine `.svg` mit sicherem relativem Pfad sein.
 12. `frontend.entry` muss auf eine existierende Datei zeigen.
-13. Beim Backend-Laden wird geprueft, ob `backend.entry` tatsaechlich existiert. Wenn nicht, bleibt das Plugin installiert, wird aber deaktiviert.
+13. Beim Backend-Laden wird geprüft, ob `backend.entry` tatsaechlich existiert. Wenn nicht, bleibt das Plugin installiert, wird aber deaktiviert.
 
 Hinweis zum Frontend-Einstiegspunkt:
 
 - Der aktuelle Lobby-Loader laedt Frontends fest unter `/plugins/<slug>/frontend/index.js`.
-- `frontend.entry` ist derzeit Metadatenfeld und wird fuer den Lobby-Loader nicht ausgewertet.
-- Fuer maximale Kompatibilitaet muss die Spielkomponente unter `frontend/index.js` liegen.
+- `frontend.entry` ist derzeit Metadatenfeld und wird für den Lobby-Loader nicht ausgewertet.
+- Für maximale Kompatibilität muss die Spielkomponente unter `frontend/index.js` liegen.
 
 ### Bekannte Runtime-Einschraenkungen (Core v1.0.0)
 
 1. Plugin-Backend-Code laeuft ohne echte Sandbox im Core-Prozess.
 2. Einige Richtlinien (z.B. keine externen Netzwerkzugriffe) sind Review-Pflicht, aber nicht vollautomatisch technisch blockiert.
-3. Einige optionale Manifest-Felder werden nur bei Vorhandensein geprueft (z.B. `icon`), aber nicht generell erzwungen.
-4. Das Feld `frontend.entry` ist derzeit nicht der effektive Ladepfad fuer das Spiel-Frontend.
+3. Einige optionale Manifest-Felder werden nur bei Vorhandensein geprüft (z.B. `icon`), aber nicht generell erzwungen.
+4. Das Feld `frontend.entry` ist derzeit nicht der effektive Ladepfad für das Spiel-Frontend.
 
 ---
 
@@ -273,7 +273,7 @@ context.ws.broadcast(lobbyId, 'neuer-spielzug', {
 
 #### context.ws.sendTo(lobbyId, userId, event, data)
 
-Sendet eine Nachricht an **einen einzelnen** Spieler (z.B. fuer geheime Informationen wie Handkarten).
+Sendet eine Nachricht an **einen einzelnen** Spieler (z.B. für geheime Informationen wie Handkarten).
 
 | Parameter | Typ | Beschreibung |
 |-----------|-----|-------------|
@@ -290,7 +290,7 @@ context.ws.sendTo(lobbyId, userId, 'deine-karten', {
 
 #### context.ws.onMessage(event, handler)
 
-Registriert einen Handler fuer eingehende Nachrichten von Spielern.
+Registriert einen Handler für eingehende Nachrichten von Spielern.
 
 | Parameter | Typ | Beschreibung |
 |-----------|-----|-------------|
@@ -309,14 +309,14 @@ Handler-Parameter:
 context.ws.onMessage('spielzug', (data, userId, lobbyId) => {
   // WICHTIG: data immer validieren, bevor es verwendet wird
   if (!data || typeof data.x !== 'number' || typeof data.y !== 'number') {
-    return; // Ungueltige Daten ignorieren
+    return; // Ungültige Daten ignorieren
   }
 
   // Spielzug verarbeiten...
   context.ws.broadcast(lobbyId, 'spielzug-ergebnis', {
     spielerId: userId,
     position: { x: data.x, y: data.y },
-    gueltig: true,
+    gültig: true,
   });
 });
 ```
@@ -325,11 +325,11 @@ context.ws.onMessage('spielzug', (data, userId, lobbyId) => {
 
 ### context.stats -- Statistiken und Leaderboard
 
-Der Core verwaltet Spielerstatistiken zentral. Plugins muessen Ergebnisse nur melden -- alles andere (Aggregation, Leaderboard, Anzeige) uebernimmt der Core.
+Der Core verwaltet Spielerstatistiken zentral. Plugins müssen Ergebnisse nur melden -- alles andere (Aggregation, Leaderboard, Anzeige) übernimmt der Core.
 
 #### context.stats.recordResult(userId, result)
 
-Speichert ein Spielergebnis. Muss fuer jeden Spieler am Ende einer Runde/eines Spiels aufgerufen werden.
+Speichert ein Spielergebnis. Muss für jeden Spieler am Ende einer Runde/eines Spiels aufgerufen werden.
 
 | Parameter | Typ | Beschreibung |
 |-----------|-----|-------------|
@@ -362,12 +362,12 @@ await context.stats.recordResult(spieler2Id, { draw: true, score: 50 });
 
 #### context.stats.getLeaderboard(options?)
 
-Ruft das Leaderboard fuer dieses Plugin ab.
+Ruft das Leaderboard für dieses Plugin ab.
 
 | Parameter | Typ | Default | Beschreibung |
 |-----------|-----|---------|-------------|
 | `options.limit` | `number` | `10` | Maximale Anzahl Eintraege |
-| `options.period` | `string` | `undefined` (= allzeit) | Zeitraum: `'woche'`, `'monat'` oder weglassen fuer allzeit |
+| `options.period` | `string` | `undefined` (= allzeit) | Zeitraum: `'woche'`, `'monat'` oder weglassen für allzeit |
 
 **Rueckgabe:** `Promise<LeaderboardEntry[]>`
 
@@ -393,7 +393,7 @@ const monatsTop5 = await context.stats.getLeaderboard({ limit: 5, period: 'monat
 
 #### context.stats.getPlayerStats(userId)
 
-Ruft die Statistiken eines einzelnen Spielers fuer dieses Plugin ab.
+Ruft die Statistiken eines einzelnen Spielers für dieses Plugin ab.
 
 | Parameter | Typ | Beschreibung |
 |-----------|-----|-------------|
@@ -428,7 +428,7 @@ if (stats) {
 
 #### context.lobby.getPlayers(lobbyId)
 
-Gibt alle Spieler in einer Lobby zurueck.
+Gibt alle Spieler in einer Lobby zurück.
 
 | Parameter | Typ | Beschreibung |
 |-----------|-----|-------------|
@@ -504,7 +504,7 @@ Registriert einen Handler, der aufgerufen wird, wenn ein Spieler die Lobby verla
 
 ```javascript
 context.lobby.onPlayerLeave((userId, lobbyId) => {
-  // Pruefen ob Spiel noch weitergehen kann
+  // Prüfen ob Spiel noch weitergehen kann
 });
 ```
 
@@ -515,7 +515,7 @@ context.lobby.onPlayerLeave((userId, lobbyId) => {
 Speichert beliebige JSON-Daten. Kann mit oder ohne `lobbyId` verwendet werden:
 
 - **Mit lobbyId:** Daten gehoeren zu einer spezifischen Lobby/Spielsitzung.
-- **Ohne lobbyId:** Globaler Plugin-Speicher, der ueber alle Lobbys hinweg verfuegbar ist.
+- **Ohne lobbyId:** Globaler Plugin-Speicher, der über alle Lobbys hinweg verfügbar ist.
 
 Intern werden die Daten in der Tabelle `plugin_settings` mit dem Praefix `storage:` gespeichert.
 
@@ -593,7 +593,7 @@ const schwierigkeit = await context.settings.get('schwierigkeit');
 const alle = await context.settings.getAll();
 // alle = { schwierigkeit: 'mittel', zeitlimit: 30, kategorien: ['sport', 'musik'] }
 
-// Einstellung setzen (normalerweise ueber die Admin-UI, nicht im Spielcode)
+// Einstellung setzen (normalerweise über die Admin-UI, nicht im Spielcode)
 await context.settings.set('schwierigkeit', 'schwer');
 ```
 
@@ -631,7 +631,7 @@ context.chat.sendSystem(lobbyId, `${gewinnerName} hat gewonnen!`);
 
 ### Komponentenformat
 
-Die Frontend-Datei (`frontend/index.js`) muss ein Vue-Options-Objekt als Default-Export bereitstellen. Die Komponente wird vom Core innerhalb der Lobby-Ansicht gerendert. Der Core uebernimmt das Laden, Mounten und Zerstoeren der Komponente.
+Die Frontend-Datei (`frontend/index.js`) muss ein Vue-Options-Objekt als Default-Export bereitstellen. Die Komponente wird vom Core innerhalb der Lobby-Ansicht gerendert. Der Core übernimmt das Laden, Mounten und Zerstoeren der Komponente.
 
 ```javascript
 export default {
@@ -651,7 +651,7 @@ export default {
 
   mounted() {
     if (typeof socket === 'undefined' || !socket) {
-      this.error = 'Socket-Verbindung nicht verfuegbar.';
+      this.error = 'Socket-Verbindung nicht verfügbar.';
       return;
     }
 
@@ -686,7 +686,7 @@ Der Lobby-Loader des Core laedt die Spielkomponente aktuell fest von:
 
 `/plugins/<slug>/frontend/index.js`
 
-Das bedeutet fuer Plugin-Autoren:
+Das bedeutet für Plugin-Autoren:
 
 - Die eigentliche Spielkomponente muss unter `frontend/index.js` vorhanden sein.
 - Das Feld `frontend.entry` im Manifest wird derzeit als Metadatum gespeichert, aber vom Lobby-Loader noch nicht dynamisch ausgewertet.
@@ -719,18 +719,18 @@ Beide werden **vor** dem Mounten der Plugin-Komponente gesetzt und beim Unmounte
 // Eigene Spieler-ID ermitteln
 const meineId = window.currentUserId;
 
-// Pruefen ob ein Spieler "ich" ist
+// Prüfen ob ein Spieler "ich" ist
 function binIchDran(state) {
   return state.currentPlayerId === window.currentUserId;
 }
 ```
 
-**Sicherheitspruefung in `mounted()`:** Trotzdem sollte immer geprueft werden, ob `socket` verfuegbar ist:
+**Sicherheitsprüfung in `mounted()`:** Trotzdem sollte immer geprüft werden, ob `socket` verfügbar ist:
 
 ```javascript
 mounted() {
   if (typeof socket === 'undefined' || !socket) {
-    this.error = 'Socket-Verbindung nicht verfuegbar.';
+    this.error = 'Socket-Verbindung nicht verfügbar.';
     return;
   }
   this.socketRef = socket;
@@ -738,7 +738,7 @@ mounted() {
 }
 ```
 
-**Aufraeumen in `beforeUnmount()`:** Alle registrierten Event-Listener muessen entfernt werden, um Memory-Leaks zu vermeiden:
+**Aufraeumen in `beforeUnmount()`:** Alle registrierten Event-Listener müssen entfernt werden, um Memory-Leaks zu vermeiden:
 
 ```javascript
 beforeUnmount() {
@@ -764,7 +764,7 @@ this.socketRef.on('plugin:mein-spiel:spielzug', (data) => {
 
 ### WebSocket-Events senden
 
-Plugins senden Game-Events ueber den Core-Event `game:event`. Der Core leitet dieses Event an das Plugin-Backend weiter UND broadcastet es an alle Spieler in der Lobby:
+Plugins senden Game-Events über den Core-Event `game:event`. Der Core leitet dieses Event an das Plugin-Backend weiter UND broadcastet es an alle Spieler in der Lobby:
 
 ```javascript
 this.socketRef.emit('game:event', {
@@ -773,11 +773,11 @@ this.socketRef.emit('game:event', {
 });
 ```
 
-Im Backend wird dieses Event ueber `context.ws.onMessage('spielzug', handler)` empfangen. Das `event`-Feld bestimmt, welcher Handler aufgerufen wird.
+Im Backend wird dieses Event über `context.ws.onMessage('spielzug', handler)` empfangen. Das `event`-Feld bestimmt, welcher Handler aufgerufen wird.
 
 ### Chat (Systemnachrichten)
 
-Der Chat wird vom Core verwaltet. Plugins koennen ueber das Backend Systemnachrichten senden (`context.chat.sendSystem()`). Eingehende Systemnachrichten:
+Der Chat wird vom Core verwaltet. Plugins können über das Backend Systemnachrichten senden (`context.chat.sendSystem()`). Eingehende Systemnachrichten:
 
 ```javascript
 this.socketRef.on('chat:system', (msg) => {
@@ -787,9 +787,9 @@ this.socketRef.on('chat:system', (msg) => {
 
 ---
 
-## Schnellstart fuer vollwertige Spiele
+## Schnellstart für vollwertige Spiele
 
-Dieser Abschnitt ist als direkte Umsetzungsanleitung gedacht. Wenn du ihn Schritt fuer Schritt befolgst, kannst du ein vollwertiges Spiel mit UI, Echtzeit-Logik, Statistiken und grafischem Spielbrett erstellen.
+Dieser Abschnitt ist als direkte Umsetzungsanleitung gedacht. Wenn du ihn Schritt für Schritt befolgst, kannst du ein vollwertiges Spiel mit UI, Echtzeit-Logik, Statistiken und grafischem Spielbrett erstellen.
 
 ### 1. Minimalstruktur anlegen
 
@@ -812,14 +812,14 @@ mein-brettspiel/
 
 ### 2. Manifest korrekt setzen
 
-Pfadbeispiel fuer ein Brettspiel:
+Pfadbeispiel für ein Brettspiel:
 
 ```json
 {
   "slug": "mein-brettspiel",
   "name": "Mein Brettspiel",
   "version": "1.0.0",
-  "description": "Rundenbasiertes Brettspiel fuer 2-4 Spieler.",
+  "description": "Rundenbasiertes Brettspiel für 2-4 Spieler.",
   "minPlayers": 2,
   "maxPlayers": 4,
   "coreVersion": ">=1.0.0",
@@ -828,7 +828,7 @@ Pfadbeispiel fuer ein Brettspiel:
     "entry": "frontend/index.js",
     "bibliothek": {
       "title": "Mein Brettspiel",
-      "description": "Kurze und lange Spielerklaerung fuer Bibliothek und Detailansicht.",
+      "description": "Kurze und lange Spielerklärung für Bibliothek und Detailansicht.",
       "coverImage": "frontend/assets/cover.svg"
     },
     "adminSettings": "frontend/settings.js"
@@ -949,7 +949,7 @@ export default {
 
   mounted() {
     if (typeof socket === 'undefined' || !socket) {
-      this.error = 'Socket-Verbindung nicht verfuegbar.';
+      this.error = 'Socket-Verbindung nicht verfügbar.';
       return;
     }
 
@@ -1012,16 +1012,16 @@ Beispiel-CSS (im Style-Block oder via Style-Injection):
 }
 ```
 
-### 5. Grafik-Einbindung fuer Spielbrett und Figuren
+### 5. Grafik-Einbindung für Spielbrett und Figuren
 
-Fuer grafische Spiele (z.B. Schachbrett, Mensch-aergere-dich-nicht, Kartenlayout) gilt:
+Für grafische Spiele (z.B. Schachbrett, Mensch-aergere-dich-nicht, Kartenlayout) gilt:
 
 1. Brett als lokale SVG/PNG in `frontend/assets/` ablegen.
 2. Figuren ebenfalls lokal als SVG/PNG ablegen.
 3. Positionen aus dem Server-State ableiten, nicht im DOM als Wahrheit pflegen.
 4. Klicks immer als Event ans Backend senden, niemals nur clientseitig entscheiden.
 
-### 6. Datenfluss fuer stabile Multiplayer-Synchronisation
+### 6. Datenfluss für stabile Multiplayer-Synchronisation
 
 Empfohlenes Modell:
 
@@ -1033,17 +1033,17 @@ Empfohlenes Modell:
 
 Damit bleiben alle Clients konsistent und Cheating durch reine UI-Manipulation wird reduziert.
 
-### 7. Definition of Done fuer ein "vollwertiges" Spiel-Plugin
+### 7. Definition of Done für ein "vollwertiges" Spiel-Plugin
 
 Ein Spiel ist erst fertig, wenn alle Punkte erfuellt sind:
 
 1. Lobby-Start, laufendes Spiel, Spielende funktionieren.
-2. Regeln werden serverseitig geprueft.
+2. Regeln werden serverseitig geprüft.
 3. UI mit Spielbrett/Figuren reagiert auf Echtzeit-Updates.
-4. Spielstand ist fuer alle Spieler konsistent.
-5. `recordResult()` wird fuer alle Spieler aufgerufen.
+4. Spielstand ist für alle Spieler konsistent.
+5. `recordResult()` wird für alle Spieler aufgerufen.
 6. Lobby wird am Ende auf `beendet` oder `geschlossen` gesetzt.
-7. Plugin-Settings (optional) koennen gespeichert und geladen werden.
+7. Plugin-Settings (optional) können gespeichert und geladen werden.
 8. Event-Listener werden sauber deregistriert.
 9. Keine externen Assets/CDNs.
 10. ZIP installiert ohne manuelle Nacharbeit.
@@ -1061,39 +1061,39 @@ Ein Spiel ist erst fertig, wenn alle Punkte erfuellt sind:
 
 ## Design-Richtlinien
 
-Plugins muessen sich optisch in das Core-Design einfuegen. Der Core verwendet ein dunkles Farbschema mit abgerundeten Kacheln (Cards). Plugins, die ein eigenes helles oder inkompatibles Design verwenden, wirken visuell fremd und werden nicht akzeptiert.
+Plugins müssen sich optisch in das Core-Design einfuegen. Der Core verwendet ein dunkles Farbschema mit abgerundeten Kacheln (Cards). Plugins, die ein eigenes helles oder inkompatibles Design verwenden, wirken visuell fremd und werden nicht akzeptiert.
 
 ### CSS-Variablen des Core
 
-Der Core definiert folgende CSS Custom Properties auf `:root`. Diese stehen allen Plugin-Komponenten automatisch zur Verfuegung:
+Der Core definiert folgende CSS Custom Properties auf `:root`. Diese stehen allen Plugin-Komponenten automatisch zur Verfügung:
 
 | Variable | Wert | Verwendung |
 |----------|------|------------|
 | `--color-bg` | `#0f1117` | Seiten-Hintergrund (dunkel) |
 | `--color-bg-secondary` | `#1a1d27` | Sekundaerer Hintergrund, Input-Felder |
 | `--color-bg-card` | `#222533` | Kachel/Card-Hintergrund |
-| `--color-bg-hover` | `#2a2d3e` | Hover-Zustand fuer Elemente |
+| `--color-bg-hover` | `#2a2d3e` | Hover-Zustand für Elemente |
 | `--color-border` | `#333650` | Raender und Trennlinien |
 | `--color-text` | `#e4e6f0` | Primaere Textfarbe (hell auf dunkel) |
 | `--color-text-muted` | `#8b8fa3` | Sekundaerer/gedaempfter Text |
 | `--color-primary` | `#6366f1` | Akzentfarbe (Indigo/Lila) |
-| `--color-primary-hover` | `#5254cc` | Hover fuer Primaerfarbe |
+| `--color-primary-hover` | `#5254cc` | Hover für Primaerfarbe |
 | `--color-success` | `#22c55e` | Erfolg, positiv |
 | `--color-warning` | `#f59e0b` | Warnung |
 | `--color-danger` | `#ef4444` | Fehler, Gefahr |
 | `--color-info` | `#3b82f6` | Info, Hinweis |
 | `--radius` | `8px` | Standard-Eckenradius |
-| `--radius-lg` | `12px` | Groesserer Eckenradius (Cards) |
+| `--radius-lg` | `12px` | Größerer Eckenradius (Cards) |
 | `--shadow` | `0 2px 8px rgba(0,0,0,0.3)` | Standard-Schatten |
-| `--transition` | `150ms ease` | Standard-Uebergangszeit |
+| `--transition` | `150ms ease` | Standard-Übergangszeit |
 
-### Verfuegbare CSS-Klassen
+### Verfügbare CSS-Klassen
 
-Der Core stellt globale CSS-Klassen bereit, die Plugins direkt verwenden koennen und sollen:
+Der Core stellt globale CSS-Klassen bereit, die Plugins direkt verwenden können und sollen:
 
 #### `.card` -- Kachel/Container
 
-Hauptcontainer fuer Inhaltsabschnitte. Verwendet den dunklen Card-Hintergrund mit Rahmen, Schatten und abgerundeten Ecken.
+Hauptcontainer für Inhaltsabschnitte. Verwendet den dunklen Card-Hintergrund mit Rahmen, Schatten und abgerundeten Ecken.
 
 ```html
 <div class="card">
@@ -1127,9 +1127,73 @@ Ergebnis: Dunkle Kachel mit `background-color: var(--color-bg-card)`, `border: 1
 <input type="number" v-model.number="runden" min="1" max="20" />
 ```
 
+### Modale und Dialoge
+
+Für Bestätigungen, Warnungen und Eingaben sollen Plugins **eigene Modale** verwenden. Browser-Dialoge wie `alert()`, `confirm()` oder `prompt()` sind für produktive Plugins nicht zulässig.
+
+Verbindliche Struktur für Plugin-Dialoge:
+
+```html
+<div class="plugin-modal-overlay">
+  <div class="plugin-modal plugin-modal--md card" role="dialog" aria-modal="true">
+    <header class="plugin-modal__header">
+      <h3>Aktion bestätigen</h3>
+    </header>
+    <section class="plugin-modal__content">
+      <p>Möchtest du diese Runde wirklich aufgeben?</p>
+    </section>
+    <footer class="plugin-modal__actions">
+      <button class="btn-secondary">Abbrechen</button>
+      <button class="btn-danger">Aufgeben</button>
+    </footer>
+  </div>
+</div>
+```
+
+Empfohlene Größenklassen:
+
+| Klasse | Empfohlene max-width | Einsatz |
+|--------|-----------------------|---------|
+| `plugin-modal--sm` | `420px` | Kurze Bestätigungen |
+| `plugin-modal--md` | `560px` | Standarddialoge |
+| `plugin-modal--lg` | `720px` | Mehr Inhalt/Formulare |
+| `plugin-modal--xl` | `920px` | Komplexe Einstellungen |
+
+Beispiel-CSS (Core-konform):
+
+```css
+.plugin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 1200;
+}
+
+.plugin-modal {
+  width: 100%;
+}
+
+.plugin-modal--sm { max-width: 420px; }
+.plugin-modal--md { max-width: 560px; }
+.plugin-modal--lg { max-width: 720px; }
+.plugin-modal--xl { max-width: 920px; }
+
+.plugin-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+```
+
+Hinweis: Die Struktur soll einheitlich bleiben, die Größe darf je Use Case variieren.
+
 ### Inline-Styles mit CSS-Variablen
 
-Wenn zusaetzliche Inline-Styles noetig sind (z.B. fuer dynamische Layouts), muessen die CSS-Variablen des Core verwendet werden. Keine hartcodierten Farbwerte verwenden.
+Wenn zusaetzliche Inline-Styles noetig sind (z.B. für dynamische Layouts), müssen die CSS-Variablen des Core verwendet werden. Keine hartcodierten Farbwerte verwenden.
 
 **Richtig:**
 
@@ -1178,21 +1242,21 @@ styles: {
 
 ### Gestaltungsprinzipien
 
-1. **Dunkles Theme ist Pflicht.** Der Core verwendet ein dunkles Farbschema. Plugins muessen dieselben Farben nutzen. Helle Hintergruende (`#fff`, `#f5f5f5`, etc.) sind verboten.
+1. **Dunkles Theme ist Pflicht.** Der Core verwendet ein dunkles Farbschema. Plugins müssen dieselben Farben nutzen. Helle Hintergruende (`#fff`, `#f5f5f5`, etc.) sind verboten.
 
-2. **`.card`-Klasse fuer Abschnitte verwenden.** Jeder visuell abgegrenzte Bereich (Spielfeld, Scoreboard, Steuerung) soll in einer `.card`-Kachel liegen. Das sorgt fuer ein einheitliches Erscheinungsbild.
+2. **`.card`-Klasse für Abschnitte verwenden.** Jeder visuell abgegrenzte Bereich (Spielfeld, Scoreboard, Steuerung) soll in einer `.card`-Kachel liegen. Das sorgt für ein einheitliches Erscheinungsbild.
 
 3. **Core-Buttons verwenden.** Statt eigene Button-Styles zu definieren, die Klassen `btn-primary`, `btn-secondary` und `btn-danger` nutzen.
 
-4. **Schriftgroessen und Abstaende konsistent halten.** Der Core verwendet `0.875rem` fuer Standardtext und `1rem` als Basisgroesse. Abstaende in `rem` angeben, nicht in `px`.
+4. **Schriftgrößen und Abstaende konsistent halten.** Der Core verwendet `0.875rem` für Standardtext und `1rem` als Basisgröße. Abstaende in `rem` angeben, nicht in `px`.
 
 5. **Keine externen Schriften.** Die Core-Schrift (System-Font-Stack) wird automatisch vererbt. Keine eigenen Schriften laden.
 
 6. **Responsive Layouts.** CSS Grid oder Flexbox verwenden. Absolute Positionierung und feste Pixelbreiten vermeiden.
 
-7. **Interaktive Elemente muessen erkennbar sein.** Hover-Zustaende mit `var(--color-bg-hover)` oder `var(--color-primary-hover)` kennzeichnen.
+7. **Interaktive Elemente müssen erkennbar sein.** Hover-Zustaende mit `var(--color-bg-hover)` oder `var(--color-primary-hover)` kennzeichnen.
 
-### Vollstaendiges Design-Beispiel
+### Vollständiges Design-Beispiel
 
 Ein typischer Plugin-Container, der sich korrekt in das Core-Design einfuegt:
 
@@ -1222,10 +1286,10 @@ export default {
                 minWidth: '60px',
                 padding: '0.5rem',
                 borderRadius: 'var(--radius)',
-                border: item.ausgewaehlt
+                border: item.ausgewählt
                   ? '2px solid var(--color-primary)'
                   : '1px solid var(--color-border)',
-                backgroundColor: item.ausgewaehlt
+                backgroundColor: item.ausgewählt
                   ? 'var(--color-bg-hover)'
                   : 'var(--color-bg-secondary)',
                 color: 'var(--color-text)',
@@ -1322,27 +1386,27 @@ sound.play();
 | Typ | Empfohlenes Format | Hinweise |
 |-----|-------------------|----------|
 | Icons | SVG | Skalierbar, klein, keine externen Abhaengigkeiten |
-| Spielgrafiken | PNG oder SVG | PNG fuer Fotos/komplexe Grafiken, SVG fuer Vektoren |
+| Spielgrafiken | PNG oder SVG | PNG für Fotos/komplexe Grafiken, SVG für Vektoren |
 | Cover-Bild | PNG | Empfohlen: 400x300 Pixel |
 | Audio | MP3 | Breite Browser-Unterstuetzung |
 | Schriften | WOFF2 | Nur wenn noetig, lokal einbinden |
 
 ### Verboten
 
-- Keine Verlinkung auf externe CDNs oder Server fuer Assets.
+- Keine Verlinkung auf externe CDNs oder Server für Assets.
 - Keine Google Fonts oder andere extern geladene Schriften.
-- Alle Assets muessen im Plugin-ZIP enthalten sein.
+- Alle Assets müssen im Plugin-ZIP enthalten sein.
 
 ---
 
 ## Admin-Einstellungskomponente
 
-Wenn in `manifest.json` das Feld `frontend.adminSettings` gesetzt ist, wird im Admin-Bereich unter "Spieleinstellungen" ein Eintrag fuer dieses Plugin angezeigt. Klickt der Admin darauf, wird die angegebene Vue-Komponente geladen.
+Wenn in `manifest.json` das Feld `frontend.adminSettings` gesetzt ist, wird im Admin-Bereich unter "Spieleinstellungen" ein Eintrag für dieses Plugin angezeigt. Klickt der Admin darauf, wird die angegebene Vue-Komponente geladen.
 
 Zugriffsmodell:
 
-- Die Settings-API ist nur fuer Admin-Benutzer erreichbar.
-- Requests muessen mit Session-Cookie und `credentials: 'include'` gesendet werden.
+- Die Settings-API ist nur für Admin-Benutzer erreichbar.
+- Requests müssen mit Session-Cookie und `credentials: 'include'` gesendet werden.
 - Bei fehlender Berechtigung antwortet der Core mit `401` oder `403`.
 
 ### Schnittstelle
@@ -1483,7 +1547,7 @@ Plugin-Events werden automatisch mit `plugin:<slug>:` geprefixed:
 
 ### Game-Events (Client -> Server -> alle Clients)
 
-Fuer einfache Weiterleitung ohne Backend-Logik:
+Für einfache Weiterleitung ohne Backend-Logik:
 
 | Event | Richtung | Daten |
 |-------|----------|-------|
@@ -1505,7 +1569,7 @@ Lobby erstellt (GameMaster/Admin)
     v
 [WARTEND] --- Spieler treten bei (per 4-Ziffern-Code)
     |
-    | GameMaster startet das Spiel (min. minPlayers muessen beigetreten sein)
+    | GameMaster startet das Spiel (min. minPlayers müssen beigetreten sein)
     v
 [LAEUFT] --- Spiel laeuft, Plugin-Logik aktiv
     |
@@ -1524,7 +1588,7 @@ Alternativ:
 ### Pflichten des Plugins im Lebenszyklus
 
 1. **Spiel starten:** Der Core setzt den Status auf `laeuft`, wenn der GameMaster startet. Anschliessend laedt der Core das Plugin-Frontend und mountet die Komponente. In `mounted()` sollte das Plugin einen `init-request` Game-Event senden, um den initialen Spielzustand vom Backend anzufordern. Das Backend erstellt daraufhin die Spielinstanz und sendet den Zustand an alle Spieler.
-2. **Ergebnisse melden:** Am Ende des Spiels **muss** das Plugin fuer jeden Spieler `context.stats.recordResult()` aufrufen.
+2. **Ergebnisse melden:** Am Ende des Spiels **muss** das Plugin für jeden Spieler `context.stats.recordResult()` aufrufen.
 3. **Status beenden:** Das Plugin **muss** `context.lobby.setStatus(lobbyId, 'beendet')` aufrufen, wenn das Spiel vorbei ist. Ohne diesen Aufruf bleibt die Lobby aktiv.
 
 ---
@@ -1542,7 +1606,7 @@ context.ws.onMessage('spielzug', async (data, userId, lobbyId) => {
   try {
     // Daten validieren
     if (!data || typeof data.position !== 'number') {
-      return; // Ungueltige Daten still ignorieren
+      return; // Ungültige Daten still ignorieren
     }
 
     // Spiellogik
@@ -1564,45 +1628,45 @@ context.ws.onMessage('spielzug', async (data, userId, lobbyId) => {
 
 ## Sicherheitsregeln
 
-Diese Regeln sind fuer die Plugin-Freigabe verbindlich.
+Diese Regeln sind für die Plugin-Freigabe verbindlich.
 
 ### Sicherheitsrealitaet im aktuellen Core
 
 - Plugins laufen im selben Node.js-Prozess wie der Core.
-- Es gibt derzeit keine echte Sandbox/Isolation fuer Plugin-Backend-Code.
+- Es gibt derzeit keine echte Sandbox/Isolation für Plugin-Backend-Code.
 - Der Core verhindert aktuell **nicht automatisch** jeden unerwuenschten Import oder Netzwerkzugriff.
 
 Folge:
 
-- Sicherheitsregeln muessen bei Entwicklung und Review aktiv eingehalten werden.
-- "Nicht erzwungen" bedeutet nicht "erlaubt", sondern "manuell zu pruefen".
+- Sicherheitsregeln müssen bei Entwicklung und Review aktiv eingehalten werden.
+- "Nicht erzwungen" bedeutet nicht "erlaubt", sondern "manuell zu prüfen".
 
-### Muss-Regeln fuer sichere Plugins
+### Muss-Regeln für sichere Plugins
 
-1. **Alle Spielereingaben serverseitig validieren.** Vertraue niemals Daten, die ueber WebSocket oder API vom Client kommen. Pruefe Typen, Wertebereiche und Zulaessigkeit.
-2. **XSS vermeiden.** Nutze im Frontend bevorzugt escaped Ausgabe (`{{ }}`), kein ungeprueftes `v-html`.
+1. **Alle Spielereingaben serverseitig validieren.** Vertraue niemals Daten, die über WebSocket oder API vom Client kommen. Prüfe Typen, Wertebereiche und Zulaessigkeit.
+2. **XSS vermeiden.** Nutze im Frontend bevorzugt escaped Ausgabe (`{{ }}`), kein ungeprüftes `v-html`.
 3. **Keine sensiblen Daten per Broadcast.** Geheime Spielinformationen nur mit `context.ws.sendTo()` an einzelne Spieler senden.
-4. **Fehler robust behandeln.** Plugin-Handler muessen gegen Laufzeitfehler abgesichert sein, damit der Core-Prozess stabil bleibt.
+4. **Fehler robust behandeln.** Plugin-Handler müssen gegen Laufzeitfehler abgesichert sein, damit der Core-Prozess stabil bleibt.
 5. **Keine externen CDNs/Remote-Assets im Frontend.** Assets lokal im ZIP ausliefern.
 6. **Keine externen Netzwerkzugriffe im Backend.** Keine HTTP-Aufrufe an Drittserver.
-7. **Keine Core-Manipulation.** Keine Ueberschreibung globaler Laufzeitobjekte, keine Eingriffe in Core-Routen, keine Seiteneffekte ausserhalb des Plugin-Zwecks.
+7. **Keine Core-Manipulation.** Keine Überschreibung globaler Laufzeitobjekte, keine Eingriffe in Core-Routen, keine Seiteneffekte ausserhalb des Plugin-Zwecks.
 8. **Datensparsamkeit beachten.** Keine unnötige Verarbeitung/Speicherung personenbezogener Daten in Plugin-Storage oder Logs.
 
 ---
 
-## Verbindliche Regeln fuer Plugin-Entwickler
+## Verbindliche Regeln für Plugin-Entwickler
 
 1. **Kein direkter Datenbankzugriff.** Ausschliesslich die bereitgestellten API-Methoden (`context.stats`, `context.storage`, `context.settings`) verwenden.
 2. **Kein Dateisystemzugriff ausserhalb des Plugin-Ziels.**
 3. **Keine externen Abhaengigkeiten im Backend.**
 4. **Keine externen CDNs im Frontend.**
-5. **`slug` ist unveraenderlich** nach der ersten Veroeffentlichung.
-6. **`coreVersion` angeben** fuer klare Kompatibilitaet.
-7. **Spielergebnisse ueber `context.stats.recordResult()` melden.**
+5. **`slug` ist unveraenderlich** nach der ersten Veröffentlichung.
+6. **`coreVersion` angeben** für klare Kompatibilität.
+7. **Spielergebnisse über `context.stats.recordResult()` melden.**
 8. **Lobby-Status korrekt setzen** (`beendet` oder `geschlossen`), damit Ressourcen sauber freigegeben werden.
 9. **Alle eingehenden Daten validieren** (WebSocket/API).
 10. **Keine blockierenden Endlosschleifen.** Plugin-Code teilt sich CPU und Event-Loop mit dem Core.
-11. **Maximale ZIP-Groesse: 50 MB.**
+11. **Maximale ZIP-Größe: 50 MB.**
 12. **ESM-Format verwenden** (`default` oder `register` Export).
 13. **Core-Design einhalten** (CSS-Variablen/Buttons/Card-Klassen).
 
@@ -1610,7 +1674,7 @@ Folge:
 
 | Regel | Erzwungen | Review erforderlich |
 |------|-----------|---------------------|
-| ZIP-Groesse <= 50 MB | Ja | Optional |
+| ZIP-Größe <= 50 MB | Ja | Optional |
 | Manifest-Pflichtfelder/Slug/min-max/coreVersion | Ja | Optional |
 | Backend-Einstiegspunkt vorhanden | Ja (beim Laden) | Optional |
 | Frontend-Einstiegspunkt vorhanden | Ja (bei Installation) | Optional |
@@ -1625,7 +1689,7 @@ Folge:
 
 | Eigenschaft | Limit |
 |-------------|-------|
-| Maximale ZIP-Groesse | 50 MB |
+| Maximale ZIP-Größe | 50 MB |
 | Slug-Laenge | 2-64 Zeichen |
 | Slug-Zeichen | `a-z`, `0-9`, `-` |
 | maxPlayers Minimum | Gleich minPlayers |
@@ -1633,7 +1697,7 @@ Folge:
 | Chat-Nachrichtenlaenge | Max. 500 Zeichen |
 | Lobby-Timeout (inaktiv) | 30 Minuten |
 | Gleichzeitige Lobbys | Max. 10.000 (durch 4-Ziffern-Code begrenzt) |
-| storage/settings Werte | Muessen JSON-serialisierbar sein |
+| storage/settings Werte | Müssen JSON-serialisierbar sein |
 
 ---
 
@@ -1687,7 +1751,7 @@ mein-spiel-v1.0.0.zip
 
 ### Release-Checkliste vor Upload
 
-Vor dem Hochladen eines Plugins sollten mindestens folgende Punkte abgeprueft werden:
+Vor dem Hochladen eines Plugins sollten mindestens folgende Punkte abgeprüft werden:
 
 1. `manifest.json` enthaelt alle Pflichtfelder und einen stabilen `slug`.
 2. Spiel-Frontend liegt unter `frontend/index.js`.
@@ -1697,18 +1761,18 @@ Vor dem Hochladen eines Plugins sollten mindestens folgende Punkte abgeprueft we
 6. Bei Spielende werden Ergebnisse geschrieben und Lobby-Status gesetzt.
 7. Keine externen CDNs, keine externen Runtime-Abhaengigkeiten.
 8. ZIP liegt unter 50 MB und hat `manifest.json` im Root.
-9. Admin-Einstellungskomponente (falls vorhanden) ist robust gegen fehlende/ungueltige Daten.
+9. Admin-Einstellungskomponente (falls vorhanden) ist robust gegen fehlende/ungültige Daten.
 10. Mehrspieler-Fall wurde manuell mit mindestens 2 Clients getestet.
 
 ---
 
-## Versionierung und Kompatibilitaet
+## Versionierung und Kompatibilität
 
 ### Core-Versionierung
 
 Der Core folgt Semantic Versioning (SemVer):
 
-- **Patch** (1.0.x): Bugfixes, keine API-Aenderungen
+- **Patch** (1.0.x): Bugfixes, keine API-Änderungen
 - **Minor** (1.x.0): Neue API-Funktionen, abwaertskompatibel
 - **Major** (x.0.0): Breaking Changes an der Plugin-API
 
@@ -1722,7 +1786,7 @@ Plugins deklarieren die benoetigte Core-Version als SemVer-Range:
 "coreVersion": ">=1.2.0 <2.0.0" // Zwischen 1.2.0 und 2.0.0
 ```
 
-Bei Installation und Aktivierung prueft der Core die `coreVersion`-Kompatibilitaet (falls im Manifest gesetzt). Eine eigene Admin-Warnlogik fuer "potenziell inkompatible, aber bereits installierte" Plugins ist derzeit nicht separat implementiert.
+Bei Installation und Aktivierung prüft der Core die `coreVersion`-Kompatibilität (falls im Manifest gesetzt). Eine eigene Admin-Warnlogik für "potenziell inkompatible, aber bereits installierte" Plugins ist derzeit nicht separat implementiert.
 
 ### Plugin-Updates
 
@@ -1731,11 +1795,11 @@ Um ein Plugin zu aktualisieren:
 1. Altes Plugin deinstallieren.
 2. Neues ZIP hochladen.
 
-Dabei werden alle Plugin-Daten (Einstellungen, Statistiken) geloescht. Fuer ein Upgrade ohne Datenverlust muss ein Export/Import-Mechanismus im Plugin selbst implementiert werden.
+Dabei werden alle Plugin-Daten (Einstellungen, Statistiken) geloescht. Für ein Upgrade ohne Datenverlust muss ein Export/Import-Mechanismus im Plugin selbst implementiert werden.
 
 ---
 
-## Vollstaendiges Beispiel-Plugin
+## Vollständiges Beispiel-Plugin
 
 ### Referenz-Plugin: Kniffel
 
@@ -1752,12 +1816,12 @@ Das Kniffel-Plugin zeigt ausserdem:
 
 - **Visuelle Wuerfel** mit CSS-Dot-Patterns und Roll-Animation
 - **Inline-Scoring** direkt im Scoreboard (klickbare Zellen in der eigenen Spalte)
-- **Style-Injection** mit `document.createElement('style')` fuer Plugin-spezifisches CSS
+- **Style-Injection** mit `document.createElement('style')` für Plugin-spezifisches CSS
 - **`window.currentUserId`** zur Identifikation der eigenen Spalte
-- Vollstaendige Fehlerbehandlung mit `withErrorBoundary`-Pattern
+- Vollständige Fehlerbehandlung mit `withErrorBoundary`-Pattern
 - Korrekte Socket-Listener-Bereinigung in `beforeUnmount()`
 
-Empfehlung: Das Kniffel-Plugin als Vorlage fuer neue Plugins verwenden. Das folgende Zahlenraten-Beispiel zeigt die minimale Grundstruktur.
+Empfehlung: Das Kniffel-Plugin als Vorlage für neue Plugins verwenden. Das folgende Zahlenraten-Beispiel zeigt die minimale Grundstruktur.
 
 ### Zahlenraten -- Ein einfaches Multiplayer-Ratespiel
 
@@ -1771,7 +1835,7 @@ Der Spielleiter denkt sich eine Zahl zwischen 1 und 100 aus, die anderen Spieler
   "name": "Zahlenraten",
   "version": "1.0.0",
   "author": "MIKE Team",
-  "description": "Rate die Zahl zwischen 1 und 100! Wer am naechsten dran ist, gewinnt.",
+  "description": "Rate die Zahl zwischen 1 und 100! Wer am nächsten dran ist, gewinnt.",
   "minPlayers": 2,
   "maxPlayers": 10,
   "coreVersion": ">=1.0.0",
@@ -1780,7 +1844,7 @@ Der Spielleiter denkt sich eine Zahl zwischen 1 und 100 aus, die anderen Spieler
     "entry": "frontend/index.js",
     "bibliothek": {
       "title": "Zahlenraten",
-      "description": "Ein Spieler waehlt eine geheime Zahl, die anderen raten. Wer am naechsten dran ist, gewinnt! Schnelles Partyspiel fuer 2-10 Spieler.",
+      "description": "Ein Spieler wählt eine geheime Zahl, die anderen raten. Wer am nächsten dran ist, gewinnt! Schnelles Partyspiel für 2-10 Spieler.",
       "coverImage": "frontend/assets/cover.png"
     },
     "adminSettings": "frontend/settings.js"
@@ -1815,7 +1879,7 @@ export default async function(context) {
       aktuelleRunde: 0,
     });
 
-    context.chat.sendSystem(lobbyId, 'Die Zahl wurde gewaehlt! Fangt an zu raten.');
+    context.chat.sendSystem(lobbyId, 'Die Zahl wurde gewählt! Fangt an zu raten.');
     context.ws.broadcast(lobbyId, 'spiel-gestartet', {
       spielleiter: userId,
       maxRunden: maxRunden,
@@ -1899,7 +1963,7 @@ export default {
 
         <div v-else-if="phase === 'waehlen'">
           <p style="color: var(--color-text-muted); margin-bottom: 0.75rem;">
-            Der Spielleiter waehlt eine geheime Zahl zwischen 1 und 100.
+            Der Spielleiter wählt eine geheime Zahl zwischen 1 und 100.
           </p>
           <div v-if="istSpielleiter" style="display: flex; gap: 0.5rem; align-items: flex-end;">
             <div style="flex: 0 0 120px;">
@@ -1980,7 +2044,7 @@ export default {
 
   mounted() {
     if (typeof socket === 'undefined' || !socket) {
-      this.error = 'Socket-Verbindung nicht verfuegbar.';
+      this.error = 'Socket-Verbindung nicht verfügbar.';
       return;
     }
 

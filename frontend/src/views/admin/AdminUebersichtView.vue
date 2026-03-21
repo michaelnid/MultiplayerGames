@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h2>System-Uebersicht</h2>
+    <h2>System-Übersicht</h2>
     <div class="overview-grid">
       <div class="card stat-card">
         <span class="stat-value">{{ stats.users }}</span>

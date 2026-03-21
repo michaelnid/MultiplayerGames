@@ -3,7 +3,7 @@
     <h1>Administration</h1>
 
     <nav class="admin-tabs">
-      <RouterLink to="/admin" :class="{ active: route.name === 'admin-uebersicht' }" class="tab">Uebersicht</RouterLink>
+      <RouterLink to="/admin" :class="{ active: route.name === 'admin-uebersicht' }" class="tab">Übersicht</RouterLink>
       <RouterLink to="/admin/benutzer" class="tab" active-class="active">Benutzer</RouterLink>
       <RouterLink to="/admin/aktive-lobbys" class="tab" active-class="active">Aktive Lobbys</RouterLink>
       <RouterLink to="/admin/plugins" class="tab" active-class="active">Plugins</RouterLink>

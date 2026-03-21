@@ -38,25 +38,40 @@
           <td>{{ lobby.creatorName }}</td>
           <td>{{ formatDate(lobby.createdAt) }}</td>
           <td class="actions-cell">
-            <button class="btn-secondary btn-sm" @click="openLobby(lobby.id)">Oeffnen</button>
+            <button class="btn-secondary btn-sm" @click="openLobby(lobby.id)">Öffnen</button>
             <button
               class="btn-danger btn-sm"
-              @click="closeLobby(lobby.id, lobby.pluginName, lobby.code)"
+              @click="requestCloseLobby(lobby.id, lobby.pluginName, lobby.code)"
               :disabled="closingLobbyId === lobby.id"
             >
-              {{ closingLobbyId === lobby.id ? 'Schliesse...' : 'Schliessen' }}
+              {{ closingLobbyId === lobby.id ? 'Schließe...' : 'Schließen' }}
             </button>
           </td>
         </tr>
       </tbody>
     </table>
+
+    <AppModal
+      v-model="showCloseModal"
+      title="Lobby schließen"
+      :message="closeModalMessage"
+      confirm-text="Schließen"
+      cancel-text="Abbrechen"
+      busy-text="Schließe..."
+      confirm-variant="danger"
+      size="md"
+      :busy="closingLobbyId !== null"
+      @confirm="confirmCloseLobby"
+      @cancel="resetCloseModal"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../../api/client.js';
+import AppModal from '../../components/AppModal.vue';
 
 interface ActiveLobby {
   id: string;
@@ -75,6 +90,13 @@ const loading = ref(false);
 const closingLobbyId = ref<string | null>(null);
 const message = ref('');
 const hasError = ref(false);
+const showCloseModal = ref(false);
+const pendingCloseLobbyId = ref('');
+const pendingClosePluginName = ref('');
+const pendingCloseCode = ref('');
+const closeModalMessage = computed(
+  () => `Lobby "${pendingClosePluginName.value}" (Code ${pendingCloseCode.value}) wirklich schließen?`,
+);
 
 function statusLabel(status: ActiveLobby['status']) {
   const labels: Record<ActiveLobby['status'], string> = {
@@ -113,17 +135,32 @@ async function loadLobbies() {
   }
 }
 
-async function closeLobby(lobbyId: string, pluginName: string, code: string) {
-  if (!confirm(`Lobby "${pluginName}" (Code ${code}) wirklich schliessen?`)) return;
+function requestCloseLobby(lobbyId: string, pluginName: string, code: string) {
+  pendingCloseLobbyId.value = lobbyId;
+  pendingClosePluginName.value = pluginName;
+  pendingCloseCode.value = code;
+  showCloseModal.value = true;
+}
 
-  closingLobbyId.value = lobbyId;
+function resetCloseModal() {
+  pendingCloseLobbyId.value = '';
+  pendingClosePluginName.value = '';
+  pendingCloseCode.value = '';
+}
+
+async function confirmCloseLobby() {
+  if (!pendingCloseLobbyId.value || closingLobbyId.value) return;
+
+  closingLobbyId.value = pendingCloseLobbyId.value;
   message.value = '';
   hasError.value = false;
 
   try {
-    await api.post(`/lobbies/${lobbyId}/close`, {});
-    message.value = `Lobby ${code} wurde geschlossen.`;
+    await api.post(`/lobbies/${pendingCloseLobbyId.value}/close`, {});
+    message.value = `Lobby ${pendingCloseCode.value} wurde geschlossen.`;
     await loadLobbies();
+    showCloseModal.value = false;
+    resetCloseModal();
   } catch (e) {
     hasError.value = true;
     message.value = e instanceof Error ? e.message : 'Lobby konnte nicht geschlossen werden';

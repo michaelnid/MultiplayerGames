@@ -325,22 +325,24 @@ onMounted(async () => {
 
 .detail-cover-area {
   width: 100%;
+  aspect-ratio: 16 / 9;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   overflow: hidden;
   line-height: 0;
+  background-color: var(--color-bg);
 }
 
 .detail-cover-img {
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
-  object-fit: cover;
-  max-height: 280px;
+  object-fit: contain;
+  background-color: var(--color-bg);
 }
 
 .detail-cover-fallback {
   width: 100%;
-  height: 180px;
+  height: 100%;
   background: linear-gradient(135deg, var(--accent, var(--color-primary)), rgba(15, 17, 23, 0.6));
   display: flex;
   align-items: center;

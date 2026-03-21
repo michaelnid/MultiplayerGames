@@ -45,7 +45,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 if ! grep -q "Debian" /etc/os-release 2>/dev/null; then
-  warn "Dieses Script ist fuer Debian 12 optimiert. Andere Systeme werden nicht offiziell unterstuetzt."
+  warn "Dieses Script ist für Debian 12 optimiert. Andere Systeme werden nicht offiziell unterstuetzt."
 fi
 
 if [ -d "$INSTALL_DIR" ]; then
@@ -90,7 +90,7 @@ USE_DOMAIN=""
 DOMAIN=""
 APP_HOST="0.0.0.0"
 
-ask "Soll das System ueber eine Domain erreichbar sein? (j/n)" USE_DOMAIN
+ask "Soll das System über eine Domain erreichbar sein? (j/n)" USE_DOMAIN
 
 if [[ "$USE_DOMAIN" == "j" || "$USE_DOMAIN" == "J" ]]; then
   ask "Domain eingeben (z.B. games.example.com):" DOMAIN
@@ -101,7 +101,7 @@ if [[ "$USE_DOMAIN" == "j" || "$USE_DOMAIN" == "J" ]]; then
   info "Nginx und SSL werden nach der Installation eingerichtet."
   APP_HOST="127.0.0.1"
 else
-  info "System wird nur ueber IP erreichbar sein (Port 3000)."
+  info "System wird nur über IP erreichbar sein (Port 3000)."
   APP_HOST="0.0.0.0"
 fi
 
@@ -266,7 +266,7 @@ NGINXEOF
     systemctl reload nginx
     success "Nginx konfiguriert"
   else
-    warn "Nginx-Konfiguration fehlerhaft. Bitte manuell pruefen."
+    warn "Nginx-Konfiguration fehlerhaft. Bitte manuell prüfen."
   fi
 
   info "SSL-Zertifikat wird eingerichtet (Let's Encrypt)..."

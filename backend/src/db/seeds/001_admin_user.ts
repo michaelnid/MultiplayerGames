@@ -7,7 +7,7 @@ export async function seed(knex: Knex): Promise<void> {
 
   const seedPassword = process.env.DEFAULT_ADMIN_PASSWORD;
   if (!seedPassword) {
-    console.warn('[seed] DEFAULT_ADMIN_PASSWORD nicht gesetzt - Admin-Seed wird uebersprungen.');
+    console.warn('[seed] DEFAULT_ADMIN_PASSWORD nicht gesetzt - Admin-Seed wird übersprungen.');
     return;
   }
 

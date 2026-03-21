@@ -87,7 +87,7 @@ export async function lobbyRoutes(fastify: FastifyInstance) {
     const manifest = parseJsonValue(plugin.manifest) as Record<string, unknown>;
     const code = await generateLobbyCode(db);
 
-    // Plugin-Settings lesen (ueberschreiben Manifest-Werte)
+    // Plugin-Settings lesen (überschreiben Manifest-Werte)
     const minSetting = await db('plugin_settings')
       .where({ plugin_id: plugin.id, key: 'settings:minPlayers' })
       .first();
@@ -311,7 +311,7 @@ export async function lobbyRoutes(fastify: FastifyInstance) {
     }
 
     if (lobby.status !== 'wartend' && lobby.status !== 'laeuft') {
-      return reply.status(400).send({ success: false, error: 'Nur aktive Lobbys koennen geschlossen werden' });
+      return reply.status(400).send({ success: false, error: 'Nur aktive Lobbys können geschlossen werden' });
     }
 
     await db.transaction(async (trx) => {

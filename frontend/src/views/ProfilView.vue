@@ -64,7 +64,7 @@
           </div>
           <div v-else class="username-display">
             <span>{{ auth.user?.username }}</span>
-            <button class="btn-edit-inline" @click="startEditUsername">Aendern</button>
+            <button class="btn-edit-inline" @click="startEditUsername">Ändern</button>
           </div>
         </div>
         <p v-if="usernameError" class="error-msg">{{ usernameError }}</p>
@@ -76,7 +76,7 @@
       </div>
 
       <div class="card">
-        <h2>Passwort aendern</h2>
+        <h2>Passwort ändern</h2>
         <form @submit.prevent="handleChangePassword" class="password-form">
           <div class="form-group">
             <label for="currentPassword">Aktuelles Passwort</label>
@@ -87,8 +87,8 @@
             <input id="newPassword" v-model="newPassword" type="password" minlength="8" required />
           </div>
           <p v-if="pwError" class="error-msg">{{ pwError }}</p>
-          <p v-if="pwSuccess" class="success-msg">Passwort erfolgreich geaendert.</p>
-          <button type="submit" class="btn-primary">Passwort aendern</button>
+          <p v-if="pwSuccess" class="success-msg">Passwort erfolgreich geändert.</p>
+          <button type="submit" class="btn-primary">Passwort ändern</button>
         </form>
       </div>
     </div>
@@ -133,11 +133,11 @@ async function saveUsername() {
   }
   try {
     await api.put('/users/me/username', { username: trimmed });
-    usernameSuccess.value = 'Benutzername geaendert';
+    usernameSuccess.value = 'Benutzername geändert';
     editingUsername.value = false;
     await auth.checkSession();
   } catch (e) {
-    usernameError.value = e instanceof Error ? e.message : 'Fehler beim Aendern';
+    usernameError.value = e instanceof Error ? e.message : 'Fehler beim Ändern';
   }
 }
 
@@ -187,7 +187,7 @@ async function handleChangePassword() {
     currentPassword.value = '';
     newPassword.value = '';
   } catch (e) {
-    pwError.value = e instanceof Error ? e.message : 'Fehler beim Aendern';
+    pwError.value = e instanceof Error ? e.message : 'Fehler beim Ändern';
   }
 }
 </script>

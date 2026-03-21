@@ -42,7 +42,7 @@ if [ ! -d "$INSTALL_DIR" ]; then
   fail "MIKE ist nicht unter $INSTALL_DIR installiert."
 fi
 
-echo -e "${RED}WARNUNG: Alle Daten werden unwiderruflich geloescht!${NC}"
+echo -e "${RED}WARNUNG: Alle Daten werden unwiderruflich gelöscht!${NC}"
 CONFIRM=""
 ask "Wirklich deinstallieren? (ja/nein)" CONFIRM
 
@@ -59,7 +59,7 @@ systemctl daemon-reload
 success "Service entfernt"
 
 DEL_DB=""
-ask "Datenbank und Benutzer ebenfalls loeschen? (j/n)" DEL_DB
+ask "Datenbank und Benutzer ebenfalls löschen? (j/n)" DEL_DB
 if [[ "$DEL_DB" == "j" || "$DEL_DB" == "J" ]]; then
   info "Datenbank wird entfernt..."
   sudo -u postgres psql -c "DROP DATABASE IF EXISTS $DB_NAME;" 2>/dev/null || true
@@ -83,7 +83,7 @@ if [[ "$DEL_CERT" == "j" || "$DEL_CERT" == "J" ]]; then
     certbot delete --cert-name "$DOMAIN" --non-interactive 2>/dev/null || true
     success "SSL-Zertifikate entfernt"
   else
-    info "Keine Domain konfiguriert, uebersprungen."
+    info "Keine Domain konfiguriert, übersprungen."
   fi
 fi
 
@@ -98,7 +98,7 @@ if [[ "$DEL_SERVICE_USER" == "j" || "$DEL_SERVICE_USER" == "J" ]]; then
     userdel "$SERVICE_USER" 2>/dev/null || true
     success "Systembenutzer entfernt"
   else
-    info "Systembenutzer nicht vorhanden, uebersprungen."
+    info "Systembenutzer nicht vorhanden, übersprungen."
   fi
 fi
 

@@ -51,13 +51,13 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Neues Passwort (leer lassen = nicht aendern)</label>
+            <label>Neues Passwort (leer lassen = nicht ändern)</label>
             <input v-model="editData.password" type="password" minlength="8" placeholder="Neues Passwort..." />
           </div>
         </div>
         <div v-if="editUser.totpEnabled" class="form-group totp-section">
           <label>2FA ist aktiv</label>
-          <button type="button" class="btn-danger btn-sm" @click="disable2FA">2FA deaktivieren</button>
+          <button type="button" class="btn-danger btn-sm" @click="requestDisable2FA">2FA deaktivieren</button>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn-primary">Speichern</button>
@@ -91,17 +91,32 @@
           <td>{{ formatDate(u.createdAt) }}</td>
           <td class="actions-cell">
             <button class="btn-edit" @click="openEdit(u)">Bearbeiten</button>
-            <button class="btn-danger btn-sm" @click="deleteUser(u.id, u.username)">Loeschen</button>
+            <button class="btn-danger btn-sm" @click="requestDeleteUser(u.id, u.username)">Löschen</button>
           </td>
         </tr>
       </tbody>
     </table>
+
+    <AppModal
+      v-model="showConfirmModal"
+      :title="confirmModalTitle"
+      :message="confirmModalMessage"
+      :confirm-text="confirmModalConfirmText"
+      cancel-text="Abbrechen"
+      busy-text="Bitte warten..."
+      confirm-variant="danger"
+      size="md"
+      :busy="confirmBusy"
+      @confirm="runConfirmedAction"
+      @cancel="resetConfirmModal"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { api } from '../../api/client.js';
+import AppModal from '../../components/AppModal.vue';
 import type { User, UserRole } from '@mike-games/shared';
 
 const users = ref<User[]>([]);
@@ -113,6 +128,33 @@ const editUser = ref<User | null>(null);
 const editData = ref({ username: '', role: '' as UserRole, password: '' });
 const editError = ref('');
 const editSuccess = ref('');
+const showConfirmModal = ref(false);
+const confirmType = ref<'disable2fa' | 'delete-user' | null>(null);
+const confirmTargetId = ref('');
+const confirmTargetUsername = ref('');
+const confirmBusy = ref(false);
+
+const confirmModalTitle = computed(() => {
+  if (confirmType.value === 'disable2fa') return '2FA deaktivieren';
+  if (confirmType.value === 'delete-user') return 'Benutzer löschen';
+  return 'Bestätigung';
+});
+
+const confirmModalMessage = computed(() => {
+  if (confirmType.value === 'disable2fa') {
+    return `2FA für "${confirmTargetUsername.value}" wirklich deaktivieren?`;
+  }
+  if (confirmType.value === 'delete-user') {
+    return `Benutzer "${confirmTargetUsername.value}" wirklich löschen?`;
+  }
+  return '';
+});
+
+const confirmModalConfirmText = computed(() => {
+  if (confirmType.value === 'disable2fa') return '2FA deaktivieren';
+  if (confirmType.value === 'delete-user') return 'Löschen';
+  return 'Bestätigen';
+});
 
 async function loadUsers() {
   const result = await api.get<User[]>('/users');
@@ -165,13 +207,13 @@ async function saveEdit() {
   }
 
   if (Object.keys(body).length === 0) {
-    editError.value = 'Keine Aenderungen vorgenommen';
+    editError.value = 'Keine Änderungen vorgenommen';
     return;
   }
 
   try {
     await api.put(`/users/${editUser.value.id}`, body);
-    editSuccess.value = 'Aenderungen gespeichert';
+    editSuccess.value = 'Änderungen gespeichert';
     editData.value.password = '';
     await loadUsers();
     const updated = users.value.find(u => u.id === editUser.value?.id);
@@ -181,26 +223,55 @@ async function saveEdit() {
   }
 }
 
-async function disable2FA() {
+function requestDisable2FA() {
   if (!editUser.value) return;
-  if (!confirm(`2FA fuer "${editUser.value.username}" wirklich deaktivieren?`)) return;
-
-  try {
-    await api.put(`/users/${editUser.value.id}`, { disable2fa: true });
-    editSuccess.value = '2FA deaktiviert';
-    await loadUsers();
-    const updated = users.value.find(u => u.id === editUser.value?.id);
-    if (updated) editUser.value = updated;
-  } catch (e) {
-    editError.value = e instanceof Error ? e.message : 'Fehler';
-  }
+  confirmType.value = 'disable2fa';
+  confirmTargetId.value = editUser.value.id;
+  confirmTargetUsername.value = editUser.value.username;
+  showConfirmModal.value = true;
 }
 
-async function deleteUser(id: string, username: string) {
-  if (!confirm(`Benutzer "${username}" wirklich loeschen?`)) return;
-  await api.delete(`/users/${id}`);
-  if (editUser.value?.id === id) editUser.value = null;
-  await loadUsers();
+function requestDeleteUser(id: string, username: string) {
+  confirmType.value = 'delete-user';
+  confirmTargetId.value = id;
+  confirmTargetUsername.value = username;
+  showConfirmModal.value = true;
+}
+
+function resetConfirmModal() {
+  confirmType.value = null;
+  confirmTargetId.value = '';
+  confirmTargetUsername.value = '';
+}
+
+async function runConfirmedAction() {
+  if (!confirmType.value || !confirmTargetId.value || confirmBusy.value) return;
+  confirmBusy.value = true;
+
+  try {
+    if (confirmType.value === 'disable2fa') {
+      await api.put(`/users/${confirmTargetId.value}`, { disable2fa: true });
+      editSuccess.value = '2FA deaktiviert';
+      await loadUsers();
+      const updated = users.value.find((u) => u.id === confirmTargetId.value);
+      if (updated && editUser.value?.id === updated.id) {
+        editUser.value = updated;
+      }
+    } else if (confirmType.value === 'delete-user') {
+      await api.delete(`/users/${confirmTargetId.value}`);
+      if (editUser.value?.id === confirmTargetId.value) {
+        editUser.value = null;
+      }
+      await loadUsers();
+    }
+
+    showConfirmModal.value = false;
+    resetConfirmModal();
+  } catch (e) {
+    editError.value = e instanceof Error ? e.message : 'Fehler';
+  } finally {
+    confirmBusy.value = false;
+  }
 }
 
 function roleLabel(role: string) {

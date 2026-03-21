@@ -30,22 +30,44 @@
           >
             {{ plugin.enabled ? 'Deaktivieren' : 'Aktivieren' }}
           </button>
-          <button class="btn-danger" @click="uninstallPlugin(plugin.id, plugin.name)">Deinstallieren</button>
+          <button class="btn-danger" @click="openUninstallModal(plugin.id, plugin.name)">Deinstallieren</button>
         </div>
       </div>
     </div>
+
+    <AppModal
+      v-model="showUninstallModal"
+      title="Plugin deinstallieren"
+      :message="uninstallModalMessage"
+      confirm-text="Deinstallieren"
+      cancel-text="Abbrechen"
+      busy-text="Deinstalliere..."
+      confirm-variant="danger"
+      size="md"
+      :busy="uninstalling"
+      @confirm="confirmUninstall"
+      @cancel="resetUninstallModal"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { api } from '../../api/client.js';
+import AppModal from '../../components/AppModal.vue';
 import type { Plugin } from '@mike-games/shared';
 
 const plugins = ref<Plugin[]>([]);
 const fileInput = ref<HTMLInputElement>();
 const uploadMsg = ref('');
 const uploadError = ref(false);
+const showUninstallModal = ref(false);
+const pendingUninstallId = ref('');
+const pendingUninstallName = ref('');
+const uninstalling = ref(false);
+const uninstallModalMessage = computed(
+  () => `Plugin "${pendingUninstallName.value}" wirklich deinstallieren? Alle zugehörigen Daten werden gelöscht.`,
+);
 
 async function loadPlugins() {
   const result = await api.get<Plugin[]>('/plugins');
@@ -77,10 +99,28 @@ async function togglePlugin(id: string, currentlyEnabled: boolean) {
   await loadPlugins();
 }
 
-async function uninstallPlugin(id: string, name: string) {
-  if (!confirm(`Plugin "${name}" wirklich deinstallieren? Alle zugehoerigen Daten werden geloescht.`)) return;
-  await api.delete(`/plugins/${id}`);
-  await loadPlugins();
+function openUninstallModal(id: string, name: string) {
+  pendingUninstallId.value = id;
+  pendingUninstallName.value = name;
+  showUninstallModal.value = true;
+}
+
+function resetUninstallModal() {
+  pendingUninstallId.value = '';
+  pendingUninstallName.value = '';
+}
+
+async function confirmUninstall() {
+  if (!pendingUninstallId.value || uninstalling.value) return;
+  uninstalling.value = true;
+  try {
+    await api.delete(`/plugins/${pendingUninstallId.value}`);
+    await loadPlugins();
+    showUninstallModal.value = false;
+    resetUninstallModal();
+  } finally {
+    uninstalling.value = false;
+  }
 }
 
 onMounted(loadPlugins);

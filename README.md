@@ -26,9 +26,9 @@ curl -sSL https://raw.githubusercontent.com/michaelnid/MultiplayerGames/main/scr
 
 Das Script fuehrt interaktiv durch die Einrichtung (Domain/SSL, Admin-Benutzer) und:
 
-- erstellt einen dedizierten Systembenutzer `mike-games` fuer den Servicebetrieb,
+- erstellt einen dedizierten Systembenutzer `mike-games` für den Servicebetrieb,
 - konfiguriert bei Domainbetrieb Reverse Proxy + Let's Encrypt,
-- setzt bei IP-only Betrieb `HOST=0.0.0.0` fuer direkten Zugriff auf Port `3000`.
+- setzt bei IP-only Betrieb `HOST=0.0.0.0` für direkten Zugriff auf Port `3000`.
 
 ## Update
 
@@ -69,4 +69,4 @@ Ohne `DEFAULT_ADMIN_PASSWORD` legt der Seed **keinen** Default-Admin an.
 
 ## Plugin-Entwicklung
 
-Siehe `docs/plugin-dev-guide.md` fuer die vollstaendige Plugin-API-Dokumentation.
+Siehe `docs/plugin-dev-guide.md` für die vollständige Plugin-API-Dokumentation.
