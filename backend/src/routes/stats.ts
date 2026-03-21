@@ -104,31 +104,25 @@ export async function statsRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get<{
-    Querystring: { pluginSlug?: string; period?: string; limit?: string };
+    Querystring: { period?: string; limit?: string };
   }>('/leaderboard', { preHandler: requireAuth }, async (request) => {
-    const { pluginSlug, period, limit: limitStr } = request.query;
+    const { period, limit: limitStr } = request.query;
     const limit = Math.min(Number(limitStr) || 25, 100);
 
     let query = db('player_stats')
       .join('users', 'player_stats.user_id', 'users.id')
-      .join('plugins', 'player_stats.plugin_id', 'plugins.id')
       .select(
         'users.id as userId',
         'users.username',
-        'plugins.slug as pluginSlug',
-        'plugins.name as pluginName',
-        'player_stats.wins',
-        'player_stats.losses',
-        'player_stats.draws',
-        'player_stats.total_score as totalScore',
-        'player_stats.games_played as gamesPlayed',
+        db.raw('SUM(player_stats.wins)::int as wins'),
+        db.raw('SUM(player_stats.losses)::int as losses'),
+        db.raw('SUM(player_stats.draws)::int as draws'),
+        db.raw('SUM(player_stats.total_score)::int as "totalScore"'),
+        db.raw('SUM(player_stats.games_played)::int as "gamesPlayed"'),
       )
-      .orderBy('player_stats.total_score', 'desc')
+      .groupBy('users.id', 'users.username')
+      .orderByRaw('SUM(player_stats.total_score) DESC')
       .limit(limit);
-
-    if (pluginSlug) {
-      query = query.where('plugins.slug', pluginSlug);
-    }
 
     if (period === 'woche') {
       query = query.where('player_stats.last_played', '>=', db.raw("NOW() - INTERVAL '7 days'"));
@@ -137,9 +131,31 @@ export async function statsRoutes(fastify: FastifyInstance) {
     }
 
     const rows = await query;
+
+    // For each user, find the plugin where they have the most wins
+    const userIds = rows.map((r: { userId: string }) => r.userId);
+    const bestGames = userIds.length > 0
+      ? await db('player_stats')
+          .join('plugins', 'player_stats.plugin_id', 'plugins.id')
+          .whereIn('player_stats.user_id', userIds)
+          .select('player_stats.user_id as userId', 'plugins.name as pluginName', 'player_stats.wins')
+          .orderBy('player_stats.wins', 'desc')
+      : [];
+
+    const bestGameMap: Record<string, string> = {};
+    for (const bg of bestGames) {
+      if (!bestGameMap[bg.userId]) {
+        bestGameMap[bg.userId] = bg.pluginName;
+      }
+    }
+
     return {
       success: true,
-      data: rows.map((r, i) => ({ rank: i + 1, ...r })),
+      data: rows.map((r: { userId: string; username: string; wins: number; losses: number; draws: number; totalScore: number; gamesPlayed: number }, i: number) => ({
+        rank: i + 1,
+        ...r,
+        bestGame: bestGameMap[r.userId] || '-',
+      })),
     };
   });
 

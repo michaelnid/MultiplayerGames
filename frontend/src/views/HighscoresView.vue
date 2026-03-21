@@ -44,10 +44,6 @@
         <div class="section-header">
           <h2>Rangliste</h2>
           <div class="filter-row">
-            <select v-model="selectedPlugin" @change="loadLeaderboard" class="filter-select">
-              <option value="">Alle Spiele</option>
-              <option v-for="p in plugins" :key="p.slug" :value="p.slug">{{ p.name }}</option>
-            </select>
             <select v-model="selectedPeriod" @change="loadLeaderboard" class="filter-select">
               <option value="">Gesamt</option>
               <option value="monat">Letzter Monat</option>
@@ -62,7 +58,7 @@
               <tr>
                 <th class="col-rank">#</th>
                 <th>Spieler</th>
-                <th v-if="!selectedPlugin">Spiel</th>
+                <th>Bestes Spiel</th>
                 <th class="col-num">Siege</th>
                 <th class="col-num">Spiele</th>
                 <th class="col-num">Winrate</th>
@@ -70,10 +66,10 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="entry in leaderboard" :key="entry.userId + entry.pluginSlug" :class="{ 'is-me': entry.userId === myUserId }">
+              <tr v-for="entry in leaderboard" :key="entry.userId" :class="{ 'is-me': entry.userId === myUserId }">
                 <td class="col-rank">{{ entry.rank }}</td>
                 <td class="col-name">{{ entry.username }}</td>
-                <td v-if="!selectedPlugin" class="col-game">{{ entry.pluginName }}</td>
+                <td class="col-game">{{ entry.bestGame }}</td>
                 <td class="col-num">{{ entry.wins }}</td>
                 <td class="col-num">{{ entry.gamesPlayed }}</td>
                 <td class="col-num">{{ entry.gamesPlayed > 0 ? Math.round(entry.wins / entry.gamesPlayed * 100) : 0 }}%</td>
@@ -130,8 +126,7 @@ interface LeaderboardEntry {
   rank: number;
   userId: string;
   username: string;
-  pluginSlug: string;
-  pluginName: string;
+  bestGame: string;
   wins: number;
   losses: number;
   draws: number;
@@ -154,21 +149,13 @@ interface Records {
   highestScore: { username: string; value: number } | null;
 }
 
-interface PluginInfo {
-  slug: string;
-  name: string;
-}
-
 const leaderboard = ref<LeaderboardEntry[]>([]);
 const topMovers = ref<TopMover[]>([]);
 const records = ref<Records | null>(null);
-const plugins = ref<PluginInfo[]>([]);
-const selectedPlugin = ref('');
 const selectedPeriod = ref('');
 
 async function loadLeaderboard() {
   const params = new URLSearchParams();
-  if (selectedPlugin.value) params.set('pluginSlug', selectedPlugin.value);
   if (selectedPeriod.value) params.set('period', selectedPeriod.value);
   params.set('limit', '25');
 
@@ -179,17 +166,15 @@ async function loadLeaderboard() {
 async function loadAll() {
   loading.value = true;
   try {
-    const [lbResult, moversResult, recordsResult, pluginsResult] = await Promise.all([
+    const [lbResult, moversResult, recordsResult] = await Promise.all([
       api.get<LeaderboardEntry[]>('/stats/leaderboard?limit=25'),
       api.get<TopMover[]>('/stats/top-movers'),
       api.get<Records>('/stats/records'),
-      api.get<PluginInfo[]>('/plugins/active'),
     ]);
 
     if (lbResult.data) leaderboard.value = lbResult.data;
     if (moversResult.data) topMovers.value = moversResult.data;
     if (recordsResult.data) records.value = recordsResult.data;
-    if (pluginsResult.data) plugins.value = pluginsResult.data;
   } catch (err) {
     console.error('Fehler beim Laden der Highscores:', err);
   } finally {
