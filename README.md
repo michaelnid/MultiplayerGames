@@ -44,6 +44,18 @@ Das Update-Skript migriert bestehende Installationen ebenfalls auf den sicheren 
 sudo /opt/mike-games/scripts/uninstall.sh
 ```
 
+## Optional: phpMyAdmin-Link im Adminbereich
+
+Die Anwendung selbst nutzt PostgreSQL. Falls du zusätzlich eine eigene phpMyAdmin-Instanz betreibst, kannst du im Adminbereich unter `Administration -> System` einen Direktlink anzeigen.
+
+Dazu in `/opt/mike-games/.env` setzen:
+
+```bash
+PHPMYADMIN_URL=https://deine-domain.tld/phpmyadmin
+```
+
+Alternativ ist auch ein relativer Pfad wie `/phpmyadmin` möglich.
+
 ## Entwicklung
 
 ```bash

@@ -1,7 +1,28 @@
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db/knex.js';
 import { requireAuth, requireAdmin } from '../auth/middleware.js';
+import { config } from '../config.js';
 import os from 'node:os';
+
+function normalizeAdminUrl(rawUrl: string): string | null {
+  const value = rawUrl.trim();
+  if (!value) return null;
+
+  if (value.startsWith('/')) {
+    return value;
+  }
+
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      return parsed.toString();
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
 
 export async function statsRoutes(fastify: FastifyInstance) {
   fastify.get('/admin-overview', { preHandler: requireAdmin }, async () => {
@@ -42,6 +63,19 @@ export async function statsRoutes(fastify: FastifyInstance) {
         memoryUsage: `${Math.round(usedMem / 1024 / 1024)} / ${Math.round(totalMem / 1024 / 1024)} MB`,
         cpuUsage: `${loadAvg[0].toFixed(2)} (1m), ${loadAvg[1].toFixed(2)} (5m)`,
         nodeMemory: `${Math.round(memUsage.heapUsed / 1024 / 1024)} MB`,
+      },
+    };
+  });
+
+  fastify.get('/db-admin', { preHandler: requireAdmin }, async () => {
+    const url = normalizeAdminUrl(config.phpMyAdminUrl);
+
+    return {
+      success: true,
+      data: {
+        tool: 'phpmyadmin',
+        enabled: Boolean(url),
+        url,
       },
     };
   });
