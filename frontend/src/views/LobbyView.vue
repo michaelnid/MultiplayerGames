@@ -297,33 +297,37 @@ h2 { font-size: 1rem; margin-bottom: 0.75rem; }
   top: 0.5rem;
   right: 0.5rem;
   z-index: 100;
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  width: 32px;
-  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: var(--color-text);
+  width: 36px;
+  height: 36px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.5;
-  transition: opacity var(--transition);
+  opacity: 0.8;
+  transition: opacity var(--transition), background var(--transition);
 }
 
 .fullscreen-btn:hover {
   opacity: 1;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .game-overlay .fullscreen-btn {
   position: fixed;
   top: 1rem;
   right: 1rem;
-  opacity: 0.7;
+  opacity: 0.9;
   color: white;
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .game-overlay .fullscreen-btn:hover {
   opacity: 1;
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .loading-plugin {
