@@ -190,6 +190,8 @@ Empfohlene Laenge fuer `frontend.bibliothek.description`: 300-1200 Zeichen.
 - Wenn kein `icon` vorhanden ist, zeigt der Core als Fallback den ersten Buchstaben des Spielnamens.
 - SVG sollte quadratisch sein (z.B. 128x128 oder 256x256), keine externen Referenzen enthalten und kein Script enthalten.
 - Optional kann `frontend.bibliothek.coverImage` (PNG/JPG/SVG) gesetzt werden. Dieses Bild wird gross in der Detailansicht der Bibliothek angezeigt.
+- Cover-SVGs muessen vollstaendig innerhalb der `viewBox` gezeichnet sein. Elemente, die ueber die `viewBox` hinausgehen, werden sichtbar abgeschnitten.
+- Empfohlen fuer Cover: Seitenverhaeltnis 16:9 (z.B. 1280x720 oder 640x360) und ein Sicherheitsrand von mindestens 5 Prozent pro Seite fuer wichtige Inhalte.
 
 ### Validierung bei Installation
 

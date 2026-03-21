@@ -57,6 +57,8 @@ export interface Plugin {
   version: string;
   author: string;
   manifest: PluginManifest;
+  effectiveMinPlayers?: number;
+  effectiveMaxPlayers?: number;
   enabled: boolean;
   installedAt: string;
 }

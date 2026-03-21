@@ -1,7 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import type { Server } from 'socket.io';
+import { WS_EVENTS } from '@mike-games/shared';
 import { db } from '../db/knex.js';
-import { requireAuth, requireGameMasterOrAdmin } from '../auth/middleware.js';
+import { requireAdmin, requireAuth, requireGameMasterOrAdmin } from '../auth/middleware.js';
+import { logAudit } from '../auth/audit.js';
 import { generateLobbyCode } from '../lobby/code-generator.js';
 import { parseJsonValue } from '../utils/json.js';
 
@@ -286,5 +288,62 @@ export async function lobbyRoutes(fastify: FastifyInstance) {
       .returning('id');
 
     return { success: true, data: { gameSessionId: gameSession.id } };
+  });
+
+  fastify.post<{
+    Params: { id: string };
+  }>('/:id/close', { preHandler: requireAdmin }, async (request, reply) => {
+    const lobby = await db('lobbies')
+      .where('lobbies.id', request.params.id)
+      .join('plugins', 'lobbies.plugin_id', 'plugins.id')
+      .select(
+        'lobbies.id',
+        'lobbies.code',
+        'lobbies.status',
+        'lobbies.plugin_id',
+        'plugins.slug as plugin_slug',
+        'plugins.name as plugin_name',
+      )
+      .first();
+
+    if (!lobby) {
+      return reply.status(404).send({ success: false, error: 'Lobby nicht gefunden' });
+    }
+
+    if (lobby.status !== 'wartend' && lobby.status !== 'laeuft') {
+      return reply.status(400).send({ success: false, error: 'Nur aktive Lobbys koennen geschlossen werden' });
+    }
+
+    await db.transaction(async (trx) => {
+      await trx('lobbies')
+        .where('id', lobby.id)
+        .update({
+          status: 'geschlossen',
+          closed_at: trx.fn.now(),
+        });
+
+      await trx('game_sessions')
+        .where('lobby_id', lobby.id)
+        .whereNull('ended_at')
+        .update({ ended_at: trx.fn.now() });
+    });
+
+    await logAudit(db, request.session.userId!, 'lobby_closed_by_admin', {
+      lobbyId: lobby.id,
+      code: lobby.code,
+      pluginId: lobby.plugin_id,
+      pluginSlug: lobby.plugin_slug,
+      pluginName: lobby.plugin_name,
+      previousStatus: lobby.status,
+    });
+
+    if (io) {
+      io.to(`lobby:${lobby.id}`).emit(WS_EVENTS.LOBBY_STATUS_CHANGED, {
+        lobbyId: lobby.id,
+        status: 'geschlossen',
+      });
+    }
+
+    return { success: true };
   });
 }

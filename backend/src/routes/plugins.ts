@@ -14,38 +14,108 @@ export function setPluginIO(io: any) {
   ioRef = io;
 }
 
+function parsePlayerNumber(value: unknown): number | null {
+  const parsed = Number(parseJsonValue(value));
+  return Number.isFinite(parsed) ? Math.floor(parsed) : null;
+}
+
+function resolveEffectivePlayers(
+  manifest: Record<string, unknown>,
+  minSetting?: unknown,
+  maxSetting?: unknown,
+): { minPlayers: number; maxPlayers: number } {
+  const manifestMin = parsePlayerNumber(manifest.minPlayers);
+  const manifestMax = parsePlayerNumber(manifest.maxPlayers);
+
+  const fallbackMin = manifestMin && manifestMin >= 1 ? manifestMin : 2;
+  const fallbackMax = manifestMax && manifestMax >= fallbackMin ? manifestMax : Math.max(8, fallbackMin);
+
+  const configuredMin = minSetting !== undefined ? parsePlayerNumber(minSetting) : null;
+  const configuredMax = maxSetting !== undefined ? parsePlayerNumber(maxSetting) : null;
+
+  const effectiveMin = configuredMin && configuredMin >= 1 ? configuredMin : fallbackMin;
+  const rawEffectiveMax = configuredMax && configuredMax >= 1 ? configuredMax : fallbackMax;
+  const effectiveMax = Math.max(effectiveMin, rawEffectiveMax);
+
+  return { minPlayers: effectiveMin, maxPlayers: effectiveMax };
+}
+
+async function loadPlayerSettingsMap(pluginIds: string[]) {
+  if (pluginIds.length === 0) {
+    return new Map<string, { minSetting?: unknown; maxSetting?: unknown }>();
+  }
+
+  const rows = await db('plugin_settings')
+    .whereIn('plugin_id', pluginIds)
+    .whereIn('key', ['settings:minPlayers', 'settings:maxPlayers'])
+    .select('plugin_id', 'key', 'value');
+
+  const settingMap = new Map<string, { minSetting?: unknown; maxSetting?: unknown }>();
+  for (const row of rows) {
+    const current = settingMap.get(row.plugin_id) ?? {};
+    if (row.key === 'settings:minPlayers') {
+      current.minSetting = row.value;
+    } else if (row.key === 'settings:maxPlayers') {
+      current.maxSetting = row.value;
+    }
+    settingMap.set(row.plugin_id, current);
+  }
+
+  return settingMap;
+}
+
 export async function pluginRoutes(fastify: FastifyInstance) {
   fastify.get('/', { preHandler: requireAdmin }, async () => {
     const plugins = await db('plugins').orderBy('installed_at', 'desc');
+    const playerSettingsMap = await loadPlayerSettingsMap(plugins.map((plugin) => plugin.id));
+
     return {
       success: true,
-      data: plugins.map((p) => ({
-        id: p.id,
-        slug: p.slug,
-        name: p.name,
-        version: p.version,
-        author: p.author,
-        manifest: parseJsonObject(p.manifest),
-        enabled: p.enabled,
-        installedAt: p.installed_at,
-      })),
+      data: plugins.map((p) => {
+        const manifest = parseJsonObject(p.manifest);
+        const settings = playerSettingsMap.get(p.id);
+        const effectivePlayers = resolveEffectivePlayers(manifest, settings?.minSetting, settings?.maxSetting);
+
+        return {
+          id: p.id,
+          slug: p.slug,
+          name: p.name,
+          version: p.version,
+          author: p.author,
+          manifest,
+          effectiveMinPlayers: effectivePlayers.minPlayers,
+          effectiveMaxPlayers: effectivePlayers.maxPlayers,
+          enabled: p.enabled,
+          installedAt: p.installed_at,
+        };
+      }),
     };
   });
 
   fastify.get('/active', async () => {
     const plugins = await db('plugins').where('enabled', true).orderBy('name', 'asc');
+    const playerSettingsMap = await loadPlayerSettingsMap(plugins.map((plugin) => plugin.id));
+
     return {
       success: true,
-      data: plugins.map((p) => ({
-        id: p.id,
-        slug: p.slug,
-        name: p.name,
-        version: p.version,
-        author: p.author,
-        manifest: parseJsonObject(p.manifest),
-        enabled: p.enabled,
-        installedAt: p.installed_at,
-      })),
+      data: plugins.map((p) => {
+        const manifest = parseJsonObject(p.manifest);
+        const settings = playerSettingsMap.get(p.id);
+        const effectivePlayers = resolveEffectivePlayers(manifest, settings?.minSetting, settings?.maxSetting);
+
+        return {
+          id: p.id,
+          slug: p.slug,
+          name: p.name,
+          version: p.version,
+          author: p.author,
+          manifest,
+          effectiveMinPlayers: effectivePlayers.minPlayers,
+          effectiveMaxPlayers: effectivePlayers.maxPlayers,
+          enabled: p.enabled,
+          installedAt: p.installed_at,
+        };
+      }),
     };
   });
 

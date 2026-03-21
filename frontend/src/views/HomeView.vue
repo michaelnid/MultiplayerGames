@@ -35,7 +35,7 @@
           <h3>{{ plugin.name }}</h3>
           <p class="game-desc">{{ plugin.manifest?.description || '' }}</p>
           <div class="game-meta">
-            {{ plugin.manifest?.minPlayers }}–{{ plugin.manifest?.maxPlayers }} Spieler
+            {{ playerRange(plugin) }} Spieler
           </div>
         </div>
       </div>
@@ -70,6 +70,31 @@ const colors = [
   '#f59e0b', '#6366f1', '#22c55e', '#ef4444', '#3b82f6', '#8b5cf6',
   '#ec4899', '#14b8a6', '#f97316', '#06b6d4',
 ];
+
+function effectiveMinPlayers(plugin: Plugin): number {
+  const configured = plugin.effectiveMinPlayers;
+  if (Number.isFinite(configured) && Number(configured) >= 1) {
+    return Math.floor(Number(configured));
+  }
+  const manifestMin = plugin.manifest?.minPlayers;
+  if (Number.isFinite(manifestMin) && Number(manifestMin) >= 1) {
+    return Math.floor(Number(manifestMin));
+  }
+  return 1;
+}
+
+function playerRange(plugin: Plugin): string {
+  const min = effectiveMinPlayers(plugin);
+  const configuredMax = plugin.effectiveMaxPlayers;
+  if (Number.isFinite(configuredMax) && Number(configuredMax) >= min) {
+    return `${min}–${Math.floor(Number(configuredMax))}`;
+  }
+  const manifestMax = plugin.manifest?.maxPlayers;
+  if (Number.isFinite(manifestMax) && Number(manifestMax) >= min) {
+    return `${min}–${Math.floor(Number(manifestMax))}`;
+  }
+  return `${min}–${min}`;
+}
 
 onMounted(async () => {
   try {

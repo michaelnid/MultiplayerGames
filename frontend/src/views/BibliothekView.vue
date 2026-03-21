@@ -37,7 +37,7 @@
         </div>
 
         <div class="game-card-footer">
-          <span class="players-pill">{{ plugin.manifest?.minPlayers }}–{{ plugin.manifest?.maxPlayers }} Spieler</span>
+          <span class="players-pill">{{ playerRange(plugin) }} Spieler</span>
           <span class="version-pill">v{{ plugin.version }}</span>
         </div>
       </button>
@@ -67,7 +67,7 @@
           <h2 class="detail-title">{{ selectedPlugin.name }}</h2>
 
           <ul class="detail-meta">
-            <li><strong>Spieler:</strong> {{ selectedPlugin.manifest?.minPlayers }}–{{ selectedPlugin.manifest?.maxPlayers }}</li>
+            <li><strong>Spieler:</strong> {{ playerRange(selectedPlugin) }}</li>
             <li><strong>Version:</strong> v{{ selectedPlugin.version }}</li>
             <li v-if="selectedPlugin.manifest?.author"><strong>Autor:</strong> {{ selectedPlugin.manifest.author }}</li>
           </ul>
@@ -130,6 +130,39 @@ function fullDescription(plugin: Plugin) {
   return plugin.manifest?.frontend?.bibliothek?.description
     ?? plugin.manifest?.description
     ?? 'Dieses Spiel hat noch keine detailierte Spielerklaerung hinterlegt.';
+}
+
+function effectiveMinPlayers(plugin: Plugin | null): number {
+  if (!plugin) return 1;
+  const configured = plugin.effectiveMinPlayers;
+  if (Number.isFinite(configured) && Number(configured) >= 1) {
+    return Math.floor(Number(configured));
+  }
+  const manifestMin = plugin.manifest?.minPlayers;
+  if (Number.isFinite(manifestMin) && Number(manifestMin) >= 1) {
+    return Math.floor(Number(manifestMin));
+  }
+  return 1;
+}
+
+function effectiveMaxPlayers(plugin: Plugin | null): number {
+  if (!plugin) return 1;
+  const min = effectiveMinPlayers(plugin);
+  const configured = plugin.effectiveMaxPlayers;
+  if (Number.isFinite(configured) && Number(configured) >= min) {
+    return Math.floor(Number(configured));
+  }
+  const manifestMax = plugin.manifest?.maxPlayers;
+  if (Number.isFinite(manifestMax) && Number(manifestMax) >= min) {
+    return Math.floor(Number(manifestMax));
+  }
+  return min;
+}
+
+function playerRange(plugin: Plugin | null): string {
+  const min = effectiveMinPlayers(plugin);
+  const max = effectiveMaxPlayers(plugin);
+  return `${min}–${max}`;
 }
 
 function openDetails(plugin: Plugin, colorIndex: number) {

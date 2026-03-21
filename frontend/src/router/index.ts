@@ -68,6 +68,11 @@ export const router = createRouter({
               component: () => import('../views/admin/BenutzerView.vue'),
             },
             {
+              path: 'aktive-lobbys',
+              name: 'admin-aktive-lobbys',
+              component: () => import('../views/admin/AktiveLobbysView.vue'),
+            },
+            {
               path: 'plugins',
               name: 'admin-plugins',
               component: () => import('../views/admin/PluginsView.vue'),
