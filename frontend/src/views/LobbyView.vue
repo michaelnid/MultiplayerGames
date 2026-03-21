@@ -294,40 +294,38 @@ h2 { font-size: 1rem; margin-bottom: 0.75rem; }
 
 .fullscreen-btn {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  top: 0.75rem;
+  right: 0.75rem;
   z-index: 100;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  color: var(--color-text);
-  width: 36px;
-  height: 36px;
+  background: transparent;
+  border: none;
+  color: var(--color-primary);
+  width: 28px;
+  height: 28px;
+  padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.8;
-  transition: opacity var(--transition), background var(--transition);
+  opacity: 0.6;
+  transition: opacity 0.2s, transform 0.2s;
 }
 
 .fullscreen-btn:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.15);
 }
 
 .game-overlay .fullscreen-btn {
   position: fixed;
   top: 1rem;
   right: 1rem;
-  opacity: 0.9;
-  color: white;
-  background: rgba(255, 255, 255, 0.15);
+  opacity: 0.7;
 }
 
 .game-overlay .fullscreen-btn:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.15);
 }
 
 .loading-plugin {
