@@ -131,8 +131,8 @@ Die folgenden Felder müssen in `manifest.json` vorhanden sein:
 | `name` | `string` | Anzeigename in der UI |
 | `version` | `string` | Plugin-Version |
 | `description` | `string` | Kurzbeschreibung |
-| `minPlayers` | `number` | Mindestanzahl Spieler |
-| `maxPlayers` | `number` | Maximalanzahl Spieler |
+| `minPlayers` | `number` | Basis-Mindestanzahl Spieler (kann live über Admin-Einstellung `minPlayers` überschrieben werden) |
+| `maxPlayers` | `number` | Basis-Maximalanzahl Spieler (kann live über Admin-Einstellung `maxPlayers` überschrieben werden) |
 | `frontend.entry` | `string` | Frontend-Einstiegspunkt (Metadatum) |
 | `backend.entry` | `string` | Backend-Einstiegspunkt |
 
@@ -181,6 +181,17 @@ Die Bibliothek zeigt jedes Plugin als anklickbare Kachel. Beim Klick wird eine D
    - Gewinn- bzw. Endbedingungen
 2. `frontend.bibliothek.title` soll eine kurze Unterzeile für die Kachel liefern.
 3. Falls `frontend.bibliothek.description` fehlt, fällt der Core auf `description` zurück. Das ist nur ein Fallback und für produktive Plugins nicht ausreichend.
+4. Die angezeigte Spieleranzahl (`Spieler: X-Y`) in Kachel und Detailansicht muss immer die **effektiven** Werte zeigen, nicht nur die Manifest-Basiswerte.
+5. Priorität für effektive Werte:
+   - Admin-Einstellungen `minPlayers` und `maxPlayers` (falls vorhanden und gültig)
+   - sonst `manifest.minPlayers` und `manifest.maxPlayers`
+6. Die Übernahme erfolgt live: Änderungen im Admin-Bereich müssen ohne Neuinstallation des Plugins in Bibliothek und Spielerklärung sichtbar sein.
+
+Validierung der effektiven Werte:
+
+- `minPlayers` muss eine ganze Zahl >= 1 sein.
+- `maxPlayers` muss eine ganze Zahl >= `minPlayers` sein.
+- Bei ungültigen Admin-Werten muss der Core automatisch auf die Manifest-Werte zurückfallen.
 
 Empfohlene Laenge für `frontend.bibliothek.description`: 300-1200 Zeichen.
 
@@ -190,6 +201,7 @@ Empfohlene Laenge für `frontend.bibliothek.description`: 300-1200 Zeichen.
 - Wenn kein `icon` vorhanden ist, zeigt der Core als Fallback den ersten Buchstaben des Spielnamens.
 - SVG sollte quadratisch sein (z.B. 128x128 oder 256x256), keine externen Referenzen enthalten und kein Script enthalten.
 - Optional kann `frontend.bibliothek.coverImage` (PNG/JPG/SVG) gesetzt werden. Dieses Bild wird gross in der Detailansicht der Bibliothek angezeigt.
+- Cover-Bilder dürfen **keinen Text** enthalten (kein Spieltitel, keine Untertitel, keine Labels). Titel und Beschreibung werden vom Core bereits separat angezeigt.
 - Cover-SVGs müssen vollständig innerhalb der `viewBox` gezeichnet sein. Elemente, die über die `viewBox` hinausgehen, werden sichtbar abgeschnitten.
 - Empfohlen für Cover: Seitenverhältnis 16:9 (z.B. 1280x720 oder 640x360) und ein Sicherheitsrand von mindestens 5 Prozent pro Seite für wichtige Inhalte.
 
@@ -1517,6 +1529,23 @@ Hinweise:
 ```
 
 Beide Endpunkte erfordern Admin-Authentifizierung.
+
+### Reservierte Settings-Schlüssel für Spieleranzahl
+
+Für die zentrale Lobby- und Bibliotheksanzeige gelten zwei reservierte Schlüssel:
+
+- `minPlayers`
+- `maxPlayers`
+
+Bedeutung und Verhalten:
+
+- Diese Schlüssel überschreiben die Manifest-Basiswerte zur Laufzeit.
+- Der Core verwendet die effektiven Werte für:
+  - Spielkarten in der Bibliothek
+  - Spielerklärung in der Detailansicht
+  - Lobby-Regeln (z.B. Mindestanzahl beim Start)
+- Änderungen über die Admin-Einstellungskomponente gelten sofort nach dem Speichern.
+- Falls nur einer der beiden Schlüssel gesetzt ist oder Werte ungültig sind, muss der Core konsistent auf valide Werte zurückfallen (bevorzugt komplett auf Manifest-Basiswerte).
 
 ---
 
