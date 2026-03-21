@@ -311,15 +311,15 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
+  padding: 2rem;
   z-index: 50;
   overflow-y: auto;
 }
 
 .detail-card {
   width: 100%;
-  max-width: 520px;
-  max-height: 85vh;
+  max-width: 460px;
+  max-height: 80vh;
   overflow: auto;
   padding: 0;
   margin: auto;
@@ -327,7 +327,7 @@ onMounted(async () => {
 
 .detail-cover-area {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 3 / 1;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   overflow: hidden;
   line-height: 0;
@@ -353,14 +353,14 @@ onMounted(async () => {
 }
 
 .detail-cover-fallback-icon {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
 }
 
 .detail-cover-fallback-letter {
   color: #fff;
-  font-size: 3rem;
+  font-size: 2rem;
   font-weight: 700;
 }
 
@@ -512,7 +512,7 @@ onMounted(async () => {
   }
 
   .detail-cover-area {
-    aspect-ratio: 2 / 1;
+    aspect-ratio: 3 / 1;
   }
 
   .detail-content {
