@@ -1,9 +1,5 @@
 import type { Knex } from 'knex';
 
-interface SessionData {
-  [key: string]: unknown;
-}
-
 export class PgSessionStore {
   private db: Knex;
   private tableName = 'sessions';
@@ -12,37 +8,44 @@ export class PgSessionStore {
     this.db = db;
   }
 
-  async get(sid: string): Promise<[SessionData, number | null] | null> {
-    const row = await this.db(this.tableName)
+  set(sid: string, session: Record<string, unknown>, callback: (err?: unknown) => void): void {
+    const expiresAt = (session.cookie as any)?.expires
+      ? new Date((session.cookie as any).expires)
+      : new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const data = JSON.stringify(session);
+    const userId = session.userId as string | undefined;
+
+    (async () => {
+      const existing = await this.db(this.tableName).where('sid', sid).first();
+      if (existing) {
+        await this.db(this.tableName)
+          .where('sid', sid)
+          .update({ data, expires_at: expiresAt, user_id: userId || null });
+      } else {
+        await this.db(this.tableName)
+          .insert({ sid, data, expires_at: expiresAt, user_id: userId || null });
+      }
+    })()
+      .then(() => callback())
+      .catch((err) => callback(err));
+  }
+
+  get(sid: string, callback: (err: unknown, session?: Record<string, unknown> | null) => void): void {
+    this.db(this.tableName)
       .where('sid', sid)
       .where('expires_at', '>', this.db.fn.now())
-      .first();
-
-    if (!row) return null;
-
-    const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
-    const expiry = row.expires_at ? new Date(row.expires_at).getTime() : null;
-    return [data, expiry];
+      .first()
+      .then((row) => {
+        if (!row) return callback(null, null);
+        const session = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+        callback(null, session);
+      })
+      .catch((err) => callback(err));
   }
 
-  async set(sid: string, session: SessionData, expiry?: number | null): Promise<void> {
-    const expiresAt = expiry ? new Date(expiry) : new Date(Date.now() + 24 * 60 * 60 * 1000);
-    const data = JSON.stringify(session);
-    const userId = (session as Record<string, unknown>).userId as string | undefined;
-
-    const existing = await this.db(this.tableName).where('sid', sid).first();
-
-    if (existing) {
-      await this.db(this.tableName)
-        .where('sid', sid)
-        .update({ data, expires_at: expiresAt, user_id: userId || null });
-    } else {
-      await this.db(this.tableName)
-        .insert({ sid, data, expires_at: expiresAt, user_id: userId || null });
-    }
-  }
-
-  async destroy(sid: string): Promise<void> {
-    await this.db(this.tableName).where('sid', sid).delete();
+  destroy(sid: string, callback: (err?: unknown) => void): void {
+    this.db(this.tableName).where('sid', sid).delete()
+      .then(() => callback())
+      .catch((err) => callback(err));
   }
 }
