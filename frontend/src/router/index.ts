@@ -19,6 +19,12 @@ export const router = createRouter({
           component: () => import('../views/BibliothekView.vue'),
         },
         {
+          path: 'bibliothek/:slug',
+          name: 'spiel-detail',
+          component: () => import('../views/SpielDetailView.vue'),
+          props: true,
+        },
+        {
           path: 'login',
           name: 'login',
           component: () => import('../views/LoginView.vue'),

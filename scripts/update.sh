@@ -279,8 +279,9 @@ systemctl enable "$PGADMIN_SERVICE_NAME" > /dev/null 2>&1
 if [ -n "$DOMAIN" ]; then
   info "Nginx-Konfiguration wird für pgAdmin 4 aktualisiert..."
 
-  SSL_CERT="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
-  SSL_KEY="/etc/letsencrypt/live/$DOMAIN/privkey.pem"
+  DOMAIN_LOWER=$(echo "$DOMAIN" | tr '[:upper:]' '[:lower:]')
+  SSL_CERT="/etc/letsencrypt/live/$DOMAIN_LOWER/fullchain.pem"
+  SSL_KEY="/etc/letsencrypt/live/$DOMAIN_LOWER/privkey.pem"
   HAS_SSL=0
   if [ -f "$SSL_CERT" ] && [ -f "$SSL_KEY" ]; then
     HAS_SSL=1
