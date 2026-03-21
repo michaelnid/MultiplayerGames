@@ -11,7 +11,7 @@ export const config = {
   host: process.env.HOST || '0.0.0.0',
   domain: process.env.DOMAIN || '',
   coreVersion: process.env.CORE_VERSION || '1.0.0',
-  phpMyAdminUrl: process.env.PHPMYADMIN_URL?.trim() || '',
+  pgAdminUrl: process.env.PGADMIN_URL?.trim() || process.env.PHPMYADMIN_URL?.trim() || '',
 
   db: {
     host: process.env.DB_HOST || '127.0.0.1',

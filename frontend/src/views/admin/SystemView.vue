@@ -32,7 +32,7 @@
       </div>
 
       <div class="card">
-        <h3>phpMyAdmin</h3>
+        <h3>pgAdmin 4</h3>
         <div class="info-row">
           <span class="info-label">Status</span>
           <span :class="dbAdmin.enabled ? 'status-ok' : 'status-warning'">
@@ -40,14 +40,14 @@
           </span>
         </div>
         <p class="hint-text" v-if="!dbAdmin.enabled">
-          Setze <code>PHPMYADMIN_URL</code> in der Server-<code>.env</code>, um den Zugriff zu aktivieren.
+          Setze <code>PGADMIN_URL</code> in der Server-<code>.env</code>, um den Zugriff zu aktivieren.
         </p>
         <button
           class="btn-secondary db-admin-button"
           :disabled="!dbAdmin.enabled || !dbAdmin.url"
           @click="openDbAdmin"
         >
-          phpMyAdmin öffnen
+          pgAdmin öffnen
         </button>
       </div>
     </div>
@@ -73,7 +73,7 @@ interface DbAdminData {
 
 const health = ref<Partial<HealthData>>({});
 const dbAdmin = ref<DbAdminData>({
-  tool: 'phpmyadmin',
+  tool: 'pgadmin4',
   enabled: false,
   url: null,
 });
@@ -92,7 +92,7 @@ async function loadDbAdmin() {
     const result = await api.get<DbAdminData>('/stats/db-admin');
     if (result.data) dbAdmin.value = result.data;
   } catch {
-    dbAdmin.value = { tool: 'phpmyadmin', enabled: false, url: null };
+    dbAdmin.value = { tool: 'pgadmin4', enabled: false, url: null };
   }
 }
 

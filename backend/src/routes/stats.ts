@@ -68,12 +68,12 @@ export async function statsRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/db-admin', { preHandler: requireAdmin }, async () => {
-    const url = normalizeAdminUrl(config.phpMyAdminUrl);
+    const url = normalizeAdminUrl(config.pgAdminUrl);
 
     return {
       success: true,
       data: {
-        tool: 'phpmyadmin',
+        tool: 'pgadmin4',
         enabled: Boolean(url),
         url,
       },
