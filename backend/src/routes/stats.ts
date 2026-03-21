@@ -143,6 +143,110 @@ export async function statsRoutes(fastify: FastifyInstance) {
     };
   });
 
+  fastify.get('/top-movers', { preHandler: requireAuth }, async () => {
+    const recentGames = await db('game_sessions')
+      .where('game_sessions.ended_at', '>=', db.raw("NOW() - INTERVAL '7 days'"))
+      .whereNotNull('game_sessions.result_data')
+      .select('game_sessions.result_data as resultData');
+
+    const scoreMap: Record<string, number> = {};
+    const gamesMap: Record<string, number> = {};
+    const winsMap: Record<string, number> = {};
+
+    for (const game of recentGames) {
+      try {
+        const data = typeof game.resultData === 'string' ? JSON.parse(game.resultData) : (game.resultData || {});
+        if (data.playerResults) {
+          for (const [userId, result] of Object.entries(data.playerResults)) {
+            const r = result as { scoreChange?: number; result?: string };
+            scoreMap[userId] = (scoreMap[userId] || 0) + (r.scoreChange || 0);
+            gamesMap[userId] = (gamesMap[userId] || 0) + 1;
+            if (r.result === 'win') winsMap[userId] = (winsMap[userId] || 0) + 1;
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
+    const userIds = Object.keys(scoreMap);
+    if (userIds.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    const users = await db('users')
+      .whereIn('id', userIds)
+      .select('id', 'username');
+
+    const userMap = Object.fromEntries(users.map((u) => [u.id, u.username]));
+
+    const movers = userIds
+      .map((id) => ({
+        userId: id,
+        username: userMap[id] || 'Unbekannt',
+        scoreChange: scoreMap[id],
+        gamesPlayed: gamesMap[id] || 0,
+        wins: winsMap[id] || 0,
+      }))
+      .sort((a, b) => b.scoreChange - a.scoreChange)
+      .slice(0, 15);
+
+    return { success: true, data: movers };
+  });
+
+  fastify.get('/records', { preHandler: requireAuth }, async () => {
+    const mostWins = await db('player_stats')
+      .join('users', 'player_stats.user_id', 'users.id')
+      .select('users.username')
+      .sum('player_stats.wins as totalWins')
+      .groupBy('users.id', 'users.username')
+      .orderBy('totalWins', 'desc')
+      .limit(1)
+      .first();
+
+    const mostGames = await db('player_stats')
+      .join('users', 'player_stats.user_id', 'users.id')
+      .select('users.username')
+      .sum('player_stats.games_played as totalGames')
+      .groupBy('users.id', 'users.username')
+      .orderBy('totalGames', 'desc')
+      .limit(1)
+      .first();
+
+    const bestWinrate = await db('player_stats')
+      .join('users', 'player_stats.user_id', 'users.id')
+      .select(
+        'users.username',
+        db.raw('SUM(player_stats.wins) as wins'),
+        db.raw('SUM(player_stats.games_played) as games'),
+      )
+      .groupBy('users.id', 'users.username')
+      .havingRaw('SUM(player_stats.games_played) >= 5')
+      .orderByRaw('SUM(player_stats.wins)::float / NULLIF(SUM(player_stats.games_played), 0) DESC')
+      .limit(1)
+      .first();
+
+    const longestStreak = await db('player_stats')
+      .join('users', 'player_stats.user_id', 'users.id')
+      .select('users.username')
+      .sum('player_stats.total_score as totalScore')
+      .groupBy('users.id', 'users.username')
+      .orderBy('totalScore', 'desc')
+      .limit(1)
+      .first();
+
+    return {
+      success: true,
+      data: {
+        mostWins: mostWins ? { username: mostWins.username, value: Number(mostWins.totalWins) } : null,
+        mostGames: mostGames ? { username: mostGames.username, value: Number(mostGames.totalGames) } : null,
+        bestWinrate: bestWinrate ? {
+          username: bestWinrate.username,
+          value: Math.round((Number(bestWinrate.wins) / Number(bestWinrate.games)) * 100),
+        } : null,
+        highestScore: longestStreak ? { username: longestStreak.username, value: Number(longestStreak.totalScore) } : null,
+      },
+    };
+  });
+
   fastify.get('/me', { preHandler: requireAuth }, async (request) => {
     const userId = request.session.userId!;
 

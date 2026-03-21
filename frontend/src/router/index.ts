@@ -36,6 +36,11 @@ export const router = createRouter({
           redirect: { name: 'profil' },
         },
         {
+          path: 'highscores',
+          name: 'highscores',
+          component: () => import('../views/HighscoresView.vue'),
+        },
+        {
           path: 'multiplayer',
           name: 'multiplayer',
           component: () => import('../views/MultiplayerView.vue'),

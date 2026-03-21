@@ -14,6 +14,7 @@
           <RouterLink to="/" class="nav-link" exact-active-class="active">Home</RouterLink>
           <RouterLink to="/bibliothek" class="nav-link" active-class="active">Bibliothek</RouterLink>
           <RouterLink to="/multiplayer" class="nav-link" active-class="active">Multiplayer</RouterLink>
+          <RouterLink to="/highscores" class="nav-link" active-class="active">Highscores</RouterLink>
         </nav>
 
         <div class="topbar-actions">
