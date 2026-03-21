@@ -32,7 +32,7 @@ export async function authRoutes(fastify: FastifyInstance) {
     Body: { username: string; password: string; totpCode?: string };
   }>('/login', {
     config: {
-      rateLimit: { max: 5, timeWindow: 15 * 60 * 1000 },
+      rateLimit: { max: 15, timeWindow: 15 * 60 * 1000 },
     },
     schema: {
       body: {

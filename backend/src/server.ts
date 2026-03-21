@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 import { config } from './config.js';
 import { db } from './db/knex.js';
+import { PgSessionStore } from './session-store.js';
 import { authRoutes } from './routes/auth.js';
 import { userRoutes } from './routes/users.js';
 import { lobbyRoutes, setLobbyIO } from './routes/lobbies.js';
@@ -42,6 +43,7 @@ async function start() {
 
   await fastify.register(fastifySession, {
     secret: config.session.secret,
+    store: new PgSessionStore(db) as unknown as Parameters<typeof fastifySession>[1] extends { store?: infer S } ? S : never,
     cookie: {
       maxAge: config.session.maxAge,
       secure: config.env === 'production' && !!config.domain,

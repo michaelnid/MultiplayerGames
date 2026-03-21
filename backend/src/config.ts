@@ -27,7 +27,7 @@ export const config = {
   },
 
   rateLimit: {
-    login: { max: 5, windowMs: 15 * 60 * 1000 },
+    login: { max: 15, windowMs: 15 * 60 * 1000 },
     api: { max: 100, windowMs: 60 * 1000 },
   },
 
