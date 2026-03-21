@@ -38,7 +38,21 @@
       </ul>
     </div>
 
-    <div v-if="lobby.status === 'laeuft' || lobby.status === 'beendet'" class="game-container">
+    <div
+      v-if="lobby.status === 'laeuft' || lobby.status === 'beendet'"
+      ref="gameContainerRef"
+      class="game-container"
+      :class="{ 'game-fullscreen': isFullscreen }"
+    >
+      <button class="fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? 'Vollbild verlassen' : 'Vollbild'">
+        <svg v-if="!isFullscreen" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
+          <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+        </svg>
+        <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
       <component v-if="pluginComponent" :is="pluginComponent" />
       <div v-else class="card loading-plugin">
         <p>Plugin wird geladen...</p>
@@ -80,6 +94,20 @@ interface LobbyData {
 const lobby = ref<LobbyData | null>(null);
 const players = ref<{ userId: string; username: string }[]>([]);
 const pluginComponent = ref<Component | null>(null);
+const gameContainerRef = ref<HTMLElement | null>(null);
+const isFullscreen = ref(false);
+
+function toggleFullscreen() {
+  if (!isFullscreen.value) {
+    gameContainerRef.value?.requestFullscreen?.();
+  } else {
+    document.exitFullscreen?.();
+  }
+}
+
+function onFullscreenChange() {
+  isFullscreen.value = !!document.fullscreenElement;
+}
 
 const isCreator = computed(() => lobby.value?.createdBy === auth.user?.id);
 
@@ -179,6 +207,7 @@ async function leaveLobby() {
 onMounted(async () => {
   await loadLobby();
   setupSocketEvents();
+  document.addEventListener('fullscreenchange', onFullscreenChange);
 });
 
 onUnmounted(() => {
@@ -187,6 +216,7 @@ onUnmounted(() => {
   ws.off(WS_EVENTS.LOBBY_PLAYER_LEFT);
   ws.off(WS_EVENTS.LOBBY_STATUS_CHANGED);
   ws.off(WS_EVENTS.GAME_RESTART);
+  document.removeEventListener('fullscreenchange', onFullscreenChange);
   delete (window as unknown as Record<string, unknown>).socket;
   delete (window as unknown as Record<string, unknown>).currentUserId;
   delete (window as unknown as Record<string, unknown>).lobbyId;
@@ -259,6 +289,38 @@ h2 { font-size: 1rem; margin-bottom: 0.75rem; }
 
 .game-container {
   min-height: 400px;
+  position: relative;
+}
+
+.game-fullscreen {
+  background-color: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.fullscreen-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition);
+}
+
+.fullscreen-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
 }
 
 .loading-plugin {

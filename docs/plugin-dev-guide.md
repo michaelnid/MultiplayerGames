@@ -790,6 +790,19 @@ beforeUnmount() {
 }
 ```
 
+### Vollbild-Modus (Core-Feature)
+
+Der Core bietet einen integrierten Vollbild-Button fuer alle Spiele. Oben rechts im Spielbereich erscheint ein Vergroesserungs-Icon, das den gesamten Spielcontainer im Browser-Vollbild oeffnet. Im Vollbild wird stattdessen ein X-Icon angezeigt, um den Modus zu verlassen.
+
+**Plugins muessen nichts tun** -- der Vollbild-Button wird automatisch vom Core gerendert. Das Plugin-Frontend wird im Vollbild-Modus zentriert und kann den gesamten Bildschirm nutzen.
+
+**Hinweise fuer Plugin-Entwickler:**
+
+- Der Vollbild-Container hat die CSS-Klasse `game-fullscreen` im aktiven Zustand.
+- Plugins sollten relative Groessen (`%`, `vw`, `vh`, `flex`, `grid`) statt fester Pixel verwenden, damit das Layout im Vollbild korrekt skaliert.
+- Der Vollbild-Button hat `z-index: 100` -- Plugins sollten keine hoeheren z-index-Werte fuer UI-Elemente oben rechts verwenden.
+- Der Nutzer kann den Vollbild-Modus auch mit `Escape` verlassen (Browser-Standard).
+
 ### WebSocket-Events empfangen
 
 Plugin-Events kommen beim Client mit dem Praefix `plugin:<slug>:` an:
