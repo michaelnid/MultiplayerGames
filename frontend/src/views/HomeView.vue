@@ -1,24 +1,29 @@
 <template>
   <div class="home">
-    <section class="hero">
-      <span class="hero-pre">MIKE</span>
-      <h1 class="hero-title">Game Library</h1>
-      <p class="hero-sub">Dein digitaler Spieleabend -- wuerfle, spiele und gewinne</p>
-    </section>
+    <!-- Animierter Partikel-Hintergrund -->
+    <canvas ref="bgCanvas" class="home-bg"></canvas>
 
-    <section class="actions-section">
-      <RouterLink to="/bibliothek" class="action-btn secondary">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-        Spielebibliothek
-      </RouterLink>
-      <button v-if="auth.isLoggedIn" class="action-btn primary" @click="showJoinModal = true">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-        Spiel beitreten
-      </button>
-      <RouterLink v-if="!auth.isLoggedIn" to="/login" class="action-btn login">
-        Anmelden und losspielen
-      </RouterLink>
-    </section>
+    <div class="home-center">
+      <section class="hero">
+        <span class="hero-pre">MIKE</span>
+        <h1 class="hero-title">Game Library</h1>
+        <p class="hero-sub">Dein digitaler Spieleabend -- wuerfle, spiele und gewinne</p>
+      </section>
+
+      <section class="actions-section">
+        <RouterLink to="/bibliothek" class="action-btn secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Spielebibliothek
+        </RouterLink>
+        <button v-if="auth.isLoggedIn" class="action-btn primary" @click="showJoinModal = true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          Spiel beitreten
+        </button>
+        <RouterLink v-if="!auth.isLoggedIn" to="/login" class="action-btn login">
+          Anmelden und losspielen
+        </RouterLink>
+      </section>
+    </div>
 
     <!-- Join Modal -->
     <Teleport to="body">
@@ -53,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth.js';
 import { api } from '../api/client.js';
@@ -65,6 +70,116 @@ const showJoinModal = ref(false);
 const lobbyCode = ref('');
 const joinError = ref('');
 const pinInput = ref<HTMLInputElement | null>(null);
+const bgCanvas = ref<HTMLCanvasElement | null>(null);
+
+let animationId = 0;
+
+// --- Partikel-Hintergrund ---
+interface Particle {
+  x: number;
+  y: number;
+  size: number;
+  speedX: number;
+  speedY: number;
+  opacity: number;
+  pulse: number;
+  pulseSpeed: number;
+}
+
+function initBackground() {
+  const canvas = bgCanvas.value;
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  let w = 0;
+  let h = 0;
+  const particles: Particle[] = [];
+  const PARTICLE_COUNT = 40;
+
+  function resize() {
+    w = canvas!.parentElement!.clientWidth;
+    h = canvas!.parentElement!.clientHeight;
+    canvas!.width = w;
+    canvas!.height = h;
+  }
+
+  function createParticles() {
+    particles.length = 0;
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      particles.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        size: Math.random() * 3 + 1,
+        speedX: (Math.random() - 0.5) * 0.3,
+        speedY: (Math.random() - 0.5) * 0.3,
+        opacity: Math.random() * 0.3 + 0.05,
+        pulse: Math.random() * Math.PI * 2,
+        pulseSpeed: Math.random() * 0.01 + 0.005,
+      });
+    }
+  }
+
+  function drawConnections() {
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 150) {
+          const alpha = (1 - dist / 150) * 0.08;
+          ctx!.strokeStyle = `rgba(0, 210, 106, ${alpha})`;
+          ctx!.lineWidth = 0.5;
+          ctx!.beginPath();
+          ctx!.moveTo(particles[i].x, particles[i].y);
+          ctx!.lineTo(particles[j].x, particles[j].y);
+          ctx!.stroke();
+        }
+      }
+    }
+  }
+
+  function animate() {
+    ctx!.clearRect(0, 0, w, h);
+
+    for (const p of particles) {
+      p.x += p.speedX;
+      p.y += p.speedY;
+      p.pulse += p.pulseSpeed;
+
+      if (p.x < 0) p.x = w;
+      if (p.x > w) p.x = 0;
+      if (p.y < 0) p.y = h;
+      if (p.y > h) p.y = 0;
+
+      const currentOpacity = p.opacity + Math.sin(p.pulse) * 0.05;
+      ctx!.fillStyle = `rgba(0, 210, 106, ${Math.max(0, currentOpacity)})`;
+      ctx!.beginPath();
+      ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx!.fill();
+    }
+
+    drawConnections();
+    animationId = requestAnimationFrame(animate);
+  }
+
+  resize();
+  createParticles();
+  animate();
+
+  window.addEventListener('resize', () => {
+    resize();
+    createParticles();
+  });
+}
+
+onMounted(() => {
+  initBackground();
+});
+
+onUnmounted(() => {
+  if (animationId) cancelAnimationFrame(animationId);
+});
 
 watch(showJoinModal, async (open) => {
   if (open) {
@@ -99,14 +214,35 @@ async function joinLobby() {
 
 <style scoped>
 .home {
-  max-width: 900px;
-  margin: 0 auto;
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.home-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.home-center {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  max-width: 700px;
   padding: 0 1.5rem;
 }
 
 .hero {
   text-align: center;
-  padding: 4rem 0 3rem;
+  margin-bottom: 2rem;
 }
 
 .hero-pre {
@@ -143,7 +279,6 @@ async function joinLobby() {
   display: flex;
   justify-content: center;
   gap: 1rem;
-  padding: 1rem 0 4rem;
   flex-wrap: wrap;
 }
 
@@ -287,10 +422,6 @@ async function joinLobby() {
 @media (max-width: 768px) {
   .hero-title {
     font-size: 2.5rem;
-  }
-
-  .hero {
-    padding: 2.5rem 0 2rem;
   }
 
   .actions-section {
