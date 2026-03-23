@@ -216,7 +216,7 @@ async function joinLobby() {
 .home {
   position: relative;
   width: 100%;
-  height: calc(100vh - 80px);
+  height: calc(100vh - 130px);
   display: flex;
   align-items: center;
   justify-content: center;
