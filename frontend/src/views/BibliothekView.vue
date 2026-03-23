@@ -32,7 +32,6 @@
 
         <div class="game-card-body">
           <h3 class="game-card-title">{{ plugin.name }}</h3>
-          <p class="game-card-sub">{{ shortDescription(plugin) }}</p>
         </div>
 
         <div class="game-card-footer">
