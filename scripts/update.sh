@@ -102,7 +102,7 @@ systemctl stop "$SERVICE_NAME" 2>/dev/null || true
 systemctl stop "$PGADMIN_SERVICE_NAME" 2>/dev/null || true
 
 info "Updates werden heruntergeladen..."
-run_as_service "cd '$INSTALL_DIR' && git pull origin main > /dev/null 2>&1" || fail "Git pull fehlgeschlagen."
+run_as_service "cd '$INSTALL_DIR' && git fetch origin main > /dev/null 2>&1 && git reset --hard origin/main > /dev/null 2>&1" || fail "Git fetch fehlgeschlagen."
 success "Repository aktualisiert"
 
 info "Abhaengigkeiten werden aktualisiert..."
