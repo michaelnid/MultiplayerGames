@@ -367,7 +367,7 @@ h2 { font-size: 1rem; margin-bottom: 0.75rem; }
   overflow: auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   padding: 1rem;
 }
