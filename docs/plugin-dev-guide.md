@@ -872,6 +872,7 @@ methods: {
 
 **Hinweise:**
 
+- Im Fullscreen-Modus wird das Plugin automatisch auf die **volle Bildschirmbreite** gestreckt (`align-items: stretch`). Plugins muessen keine eigene Breitenanpassung vornehmen -- `width: 100%` auf dem aeusseren Container reicht aus.
 - Plugins sollten relative Groessen (`%`, `vw`, `vh`, `flex`, `grid`) statt fester Pixel verwenden, damit das Layout im Vollbild korrekt skaliert.
 - Der Overlay-Container hat die CSS-Klasse `game-overlay` im aktiven Zustand.
 - Es ist voellig in Ordnung, keinen Fullscreen-Button anzubieten -- nicht jedes Spiel braucht das.
@@ -1581,6 +1582,12 @@ styles: {
 
 8. **Querformat-Pflicht (Landscape).** Das gesamte MIKE Game Library Interface ist fuer Querformat optimiert. Der Core zeigt auf Mobilgeraeten im Hochformat automatisch einen Dreh-Hinweis. Plugins muessen ihr Layout so gestalten, dass es im Querformat ohne vertikales Scrollen nutzbar ist.
 
+9. **Layout-Stabilitaet.** Das Layout eines Plugins darf sich waehrend des Spiels nicht sprunghaft aendern. Konkret:
+   - Bereiche, deren Inhalt sich aendern kann (z.B. Wuerfel vor/nach dem Wuerfeln), muessen eine feste `min-height` haben.
+   - Buttons, die nur in bestimmten Zustaenden sichtbar sind, sollten `v-show` statt `v-if` verwenden, damit der Platz reserviert bleibt.
+   - Spalten mit fester Breite (`flex: 0 0 220px`) verhindern, dass sich das Layout bei aenderndem Inhalt verschiebt.
+   - Text-Hinweise, die nur zeitweise erscheinen, sollten vermieden oder in einem Bereich mit fester Hoehe platziert werden.
+
 ### Querformat-Anforderungen
 
 Die MIKE Game Library ist primaer fuer den Landscape-Modus konzipiert. Auf Mobilgeraeten im Hochformat zeigt der Core automatisch einen Overlay-Hinweis, das Geraet zu drehen. Plugins muessen diese Vorgabe unterstuetzen.
@@ -1608,16 +1615,14 @@ Die MIKE Game Library ist primaer fuer den Landscape-Modus konzipiert. Auf Mobil
 
 ```javascript
 template: `
-  <div :style="{ display: 'flex', gap: '1rem', height: 'calc(100vh - 140px)' }">
-    <!-- Spielfeld links -->
-    <div :style="{ flex: '1', display: 'flex', alignItems: 'center', justifyContent: 'center' }">
-      <div :style="{ aspectRatio: '1', maxHeight: '100%', maxWidth: '100%' }">
-        <!-- Spielbrett hier -->
-      </div>
+  <div class="card" style="display: flex; width: 100%;">
+    <!-- Steuerung links (feste Breite) -->
+    <div style="flex: 0 0 220px; border-right: 2px solid var(--color-border);">
+      <!-- Status, Spielelemente, Buttons -->
     </div>
-    <!-- Info/Steuerung rechts -->
-    <div :style="{ width: '250px', flexShrink: 0 }">
-      <!-- Spieler, Punkte, Buttons -->
+    <!-- Spielfeld/Scoreboard rechts (flexibel) -->
+    <div style="flex: 1; min-width: 0; overflow: auto; padding: 0.75rem;">
+      <!-- Tabelle, Spielbrett etc. -->
     </div>
   </div>
 `
