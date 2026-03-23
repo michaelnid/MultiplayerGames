@@ -1,0 +1,21 @@
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+plugins/*/
+!plugins/.gitkeep
+coverage/
+*.tgz
+.vite/
+idee.txt
+AGENTS.md
+05 Kniffel/
+Kniffel/
+*.zip
+*-SKILL.md
+.gemini/
+.agent/
+.agents/
+_agent/
+_agents/

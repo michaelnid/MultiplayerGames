@@ -1,0 +1,27 @@
+{
+  "name": "mike-games",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MIKE - Multiplayer Game System mit Plugin-Architektur",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=frontend && npm run build --workspace=backend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:backend": "npm run build --workspace=backend",
+    "start": "npm run start --workspace=backend",
+    "migrate": "npm run migrate --workspace=backend",
+    "migrate:rollback": "npm run migrate:rollback --workspace=backend",
+    "seed": "npm run seed --workspace=backend"
+  },
+  "workspaces": [
+    "shared",
+    "backend",
+    "frontend"
+  ],
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.0"
+  }
+}

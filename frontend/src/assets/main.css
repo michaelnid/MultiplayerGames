@@ -1,0 +1,386 @@
+/* ===================================================================
+   MIKE Game Library -- Neobrutalism Design System (Dark Mode)
+   High-contrast, thick borders, hard offset shadows, bold flat colors.
+   =================================================================== */
+
+/* --- Local Fonts (DSGVO-konform, keine externen Requests) --- */
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin-600.woff2') format('woff2');
+}
+
+/* --- Reset --- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* --- Design Tokens --- */
+
+:root {
+  /* Neobrutalism core palette -- Gruen-Akzent */
+  --color-primary: #00D26A;
+  --color-primary-hover: #00B85C;
+  --color-secondary: #0EA5A0;
+  --color-secondary-hover: #0C8C87;
+  --color-success: #16A34A;
+  --color-warning: #D97706;
+  --color-danger: #DC2626;
+  --color-info: #2563EB;
+
+  /* Surfaces -- dark neobrutalism */
+  --color-bg: #0E1117;
+  --color-bg-secondary: #161B26;
+  --color-bg-card: #1C2333;
+  --color-bg-hover: #252D3F;
+
+  /* Borders -- thick, visible on dark bg */
+  --color-border: #3A4559;
+  --color-border-light: #2A3348;
+
+  /* Text -- light on dark */
+  --color-text: #E8ECF4;
+  --color-text-muted: #8B93A6;
+
+  /* Shadows -- weich fuer Dark Mode */
+  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.2);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.4);
+
+  /* Radius -- neobrutalism uses small/no radius */
+  --radius: 4px;
+  --radius-lg: 8px;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Typography -- System fonts */
+  --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Transitions */
+  --transition: 120ms ease;
+}
+
+/* --- Base --- */
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: var(--font-primary);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+
+  /* Sanfter Gruen-Fade im Hintergrund */
+  background-image:
+    radial-gradient(ellipse at 30% 0%, rgba(0, 210, 106, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(14, 165, 160, 0.04) 0%, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* --- Typography --- */
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+code, pre, kbd {
+  font-family: var(--font-mono);
+}
+
+/* --- Links --- */
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color var(--transition);
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+}
+
+a:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* --- Buttons --- */
+
+button {
+  cursor: pointer;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  font-family: var(--font-primary);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: transform var(--transition), box-shadow var(--transition),
+              background-color var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+
+button:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+button:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: #1A1A2E;
+  border-color: var(--color-border);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.btn-danger {
+  background-color: var(--color-danger);
+  color: white;
+  border-color: var(--color-border);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #B91C1C;
+}
+
+.btn-secondary {
+  background-color: var(--color-bg-card);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+}
+
+/* --- Form Elements --- */
+
+input,
+select,
+textarea {
+  font-family: var(--font-primary);
+  background-color: var(--color-bg-card);
+  color: var(--color-text);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  width: 100%;
+  transition: box-shadow var(--transition);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  box-shadow: var(--shadow-sm);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background-color: var(--color-bg-secondary);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-1);
+  color: var(--color-text);
+}
+
+/* --- Card -- Neobrutalism signature component --- */
+
+.card {
+  background-color: var(--color-bg-card);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+}
+
+/* --- Tables --- */
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 2px solid var(--color-border);
+}
+
+td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-border-light);
+  font-size: 0.85rem;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* --- Badges / Pills --- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  background-color: var(--color-bg-secondary);
+}
+
+.badge-primary {
+  background-color: var(--color-primary);
+  color: #1A1A2E;
+}
+
+.badge-success {
+  background-color: var(--color-success);
+  color: white;
+}
+
+.badge-danger {
+  background-color: var(--color-danger);
+  color: white;
+}
+
+/* --- Utility Classes --- */
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* --- Scrollbar Styling --- */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-light);
+  border: 1px solid var(--color-border);
+}
+
+/* --- Selection --- */
+
+::selection {
+  background-color: var(--color-primary);
+  color: #1A1A2E;
+}
+
+/* --- Portrait-Hinweis (Mobilgeraete im Hochformat) --- */
+
+.portrait-hint {
+  display: none;
+}
+
+@media (orientation: portrait) and (max-width: 768px) {
+  .portrait-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .portrait-hint-icon {
+    color: var(--color-primary);
+    animation: portrait-rotate 2s ease-in-out infinite;
+  }
+
+  .portrait-hint-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.5;
+    max-width: 280px;
+  }
+
+  .portrait-hint-sub {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+  }
+
+  @keyframes portrait-rotate {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(90deg); }
+    50%, 75% { transform: rotate(90deg); }
+  }
+}
